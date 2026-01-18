@@ -18,13 +18,13 @@ from views.gestionnaire_stock.alerts_screen import AlertsScreen
 from views.gestionnaire_stock.stock_stats_screen import StockStatsScreen
 
 
-class StockManagerView(QMainWindow):
+class StockManagerView(QWidget):
     """
     Vue principale du gestionnaire de stock
-    Interface sobre, dense, axée sur l'efficacité
+    Architecture identique au Caissier (QWidget avec Layout)
     """
     
-    # Index des écrans
+    # Index des écrans du StackedWidget
     INDEX_STOCK = 0
     INDEX_MOUVEMENTS = 1
     INDEX_ALERTES = 2
@@ -34,7 +34,7 @@ class StockManagerView(QMainWindow):
         super().__init__()
         
         self.setWindowTitle("Gestionnaire de Stock")
-        self.resize(1280, 800) # Taille par défaut ajustée
+        # self.resize(1280, 800) # Géré par le parent
         
         self.id_utilisateur = id_utilisateur
         self.nom_utilisateur = nom_utilisateur
@@ -45,11 +45,7 @@ class StockManagerView(QMainWindow):
     
     def setup_ui(self):
         """Construction de l'interface principale"""
-        # Widget central pour QMainWindow
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        
-        layout_principal = QHBoxLayout(self.central_widget)
+        layout_principal = QHBoxLayout(self)
         layout_principal.setContentsMargins(0, 0, 0, 0)
         layout_principal.setSpacing(0)
         
