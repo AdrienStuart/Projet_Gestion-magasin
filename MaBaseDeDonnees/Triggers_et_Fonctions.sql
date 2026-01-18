@@ -349,3 +349,70 @@ FOR EACH ROW
 WHEN (OLD.Statut = 'RECU')
 EXECUTE FUNCTION fn_verrou_achat_recu();
 
+-- 10. TRIGGER : Surveillance intelligente du stock (AlerteStock)
+
+-- Nettoyage préventif
+DROP TRIGGER IF EXISTS trg_surveillance_stock ON Produit;
+DROP FUNCTION IF EXISTS fn_surveillance_stock_intelligente();
+
+CREATE OR REPLACE FUNCTION fn_surveillance_stock_intelligente()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_priorite VARCHAR(20);
+BEGIN
+    -- CAS 1 : LE STOCK PASSE SOUS LE SEUIL (Alerte)
+    IF NEW.StockActuel <= NEW.StockAlerte THEN
+        
+        -- Anti-Spam : On ne crée une alerte que si aucune n'est déjà active
+        IF NOT EXISTS (
+            SELECT 1 FROM AlerteStock 
+            WHERE Id_Produit = NEW.Id_Produit 
+            AND Statut NOT IN ('ARCHIVEE', 'COMMANDE_PASSEE')
+        ) THEN
+            -- Calcul de priorité
+            IF NEW.StockActuel = 0 THEN 
+                v_priorite := 'CRITICAL';
+            ELSIF NEW.StockActuel <= (NEW.StockAlerte / 2) THEN 
+                v_priorite := 'HIGH';
+            ELSE 
+                v_priorite := 'MEDIUM';
+            END IF;
+
+            INSERT INTO AlerteStock (
+                Id_Produit, 
+                Stock_Au_Moment_Alerte, 
+                Seuil_Alerte_Vise, 
+                Priorite, 
+                Commentaire
+            ) VALUES (
+                NEW.Id_Produit, 
+                NEW.StockActuel, 
+                NEW.StockAlerte, 
+                v_priorite,
+                'Alerte automatique : Stock critique détecté.'
+            );
+        END IF;
+
+    -- CAS 2 : LE STOCK REPASSE AU-DESSUS DU SEUIL (Auto-guérison)
+    ELSIF NEW.StockActuel > NEW.StockAlerte 
+        AND OLD.StockActuel <= OLD.StockAlerte THEN
+        
+        -- On archive automatiquement les alertes qui étaient en attente
+        UPDATE AlerteStock
+        SET Statut = 'ARCHIVEE',
+            Date_Traitement = CURRENT_TIMESTAMP,
+            Commentaire = COALESCE(Commentaire, '') || ' [Fermeture automatique : Stock réapprovisionné]'
+        WHERE Id_Produit = NEW.Id_Produit 
+        AND Statut IN ('NON_LUE', 'VU');
+        
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_surveillance_stock
+AFTER UPDATE OF StockActuel ON Produit
+FOR EACH ROW
+EXECUTE FUNCTION fn_surveillance_stock_intelligente();
+
