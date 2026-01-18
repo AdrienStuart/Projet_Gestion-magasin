@@ -197,14 +197,14 @@ class MovementsScreen(QWidget):
         # Configuration
         header = self.table_historique.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Date
-        header.setSectionResizeMode(1, QHeaderView.Stretch)            # Produit
+        header.setSectionResizeMode(1, QHeaderView.Stretch)            # Produit (Natural stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Quantité
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Utilisateur
-        header.setSectionResizeMode(5, QHeaderView.Stretch)            # Motif
+        header.setSectionResizeMode(5, QHeaderView.Stretch)            # Motif (Aussi stretch)
         
         self.table_historique.verticalHeader().setVisible(False)
-        self.table_historique.verticalHeader().setDefaultSectionSize(60) # Hauteur augmentée
+        self.table_historique.verticalHeader().setDefaultSectionSize(50) 
         self.table_historique.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_historique.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table_historique.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -212,27 +212,28 @@ class MovementsScreen(QWidget):
         
         self.table_historique.setStyleSheet("""
             QTableWidget {
-                font-size: 14pt; /* Police plus grande */
-                alternate-background-color: #F9F9F9;
+                font-size: 13pt;
+                alternate-background-color: #F0F4F8;
                 background-color: white;
                 gridline-color: #E0E0E0;
-                border: 1px solid #E0E0E0;
-                border-radius: 8px;
+                border: none;
             }
             QTableWidget::item {
-                padding: 10px; /* Padding augmenté */
+                padding: 5px 10px;
+                color: #2A2A40;
             }
             QTableWidget::item:selected {
-                background-color: #2196F3;
+                background-color: #00C853;
                 color: white;
             }
             QHeaderView::section {
-                background-color: #455A64;
-                color: white;
-                padding: 12px;
-                font-size: 12pt;
+                background-color: #F5F5F5;
+                color: #2A2A40;
+                padding: 10px;
+                font-size: 11pt;
                 font-weight: bold;
                 border: none;
+                border-bottom: 2px solid #E0E0E0;
             }
         """)
         

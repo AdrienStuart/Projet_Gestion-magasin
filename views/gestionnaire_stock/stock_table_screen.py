@@ -126,14 +126,14 @@ class StockTableScreen(QWidget):
         # Configuration
         header = self.table_stock.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Code
-        header.setSectionResizeMode(1, QHeaderView.Stretch)           # Produit
+        header.setSectionResizeMode(1, QHeaderView.Stretch)           # Produit (Stretch pour visibilité naturelle)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Catégorie
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Stock
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Seuil
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Statut
         
         self.table_stock.verticalHeader().setVisible(False)
-        self.table_stock.verticalHeader().setDefaultSectionSize(60) # Hauteur augmentée pour visibilité
+        self.table_stock.verticalHeader().setDefaultSectionSize(50) # Hauteur standard confortable
         self.table_stock.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_stock.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table_stock.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -141,27 +141,28 @@ class StockTableScreen(QWidget):
         
         self.table_stock.setStyleSheet("""
             QTableWidget {
-                font-size: 14pt; /* Police plus grande */
-                alternate-background-color: #F9F9F9;
+                font-size: 13pt; /* Taille lisible standard */
+                alternate-background-color: #F0F4F8; /* Gris très doux pour le contraste */
                 background-color: white;
                 gridline-color: #E0E0E0;
-                border: 1px solid #E0E0E0;
-                border-radius: 8px;
+                border: none; /* Bordure supprimée pour style épuré */
             }
             QTableWidget::item {
-                padding: 10px; /* Padding augmenté */
+                padding: 5px 10px;
+                color: #2A2A40; /* Texte gris foncé (pas noir complet) */
             }
             QTableWidget::item:selected {
-                background-color: #2196F3;
+                background-color: #00C853; /* Vert Caisse */
                 color: white;
             }
             QHeaderView::section {
-                background-color: #37474F;
-                color: white;
-                padding: 12px;
-                font-size: 12pt;
+                background-color: #F5F5F5; /* En-tête clair */
+                color: #2A2A40;
+                padding: 10px;
+                font-size: 11pt;
                 font-weight: bold;
                 border: none;
+                border-bottom: 2px solid #E0E0E0;
             }
         """)
         

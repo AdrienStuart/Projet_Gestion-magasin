@@ -45,7 +45,6 @@ class StockManagerView(QMainWindow):
     
     def setup_ui(self):
         """Construction de l'interface principale"""
-        # Widget central pour QMainWindow
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         
@@ -62,7 +61,7 @@ class StockManagerView(QMainWindow):
         layout_droit.setContentsMargins(0, 0, 0, 0)
         layout_droit.setSpacing(0)
         
-        # Top bar
+        # Top bar (Style Caisse)
         self._creer_top_bar(layout_droit)
         
         # StackedWidget pour les écrans
@@ -75,7 +74,7 @@ class StockManagerView(QMainWindow):
     def _creer_sidebar(self, parent_layout):
         """Crée la sidebar de navigation"""
         self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(260) # Légèrement plus large
+        self.sidebar.setFixedWidth(260)
         self.sidebar.setStyleSheet("""
             QFrame {
                 background-color: #2A2A40;
@@ -85,7 +84,7 @@ class StockManagerView(QMainWindow):
         
         layout_sidebar = QVBoxLayout(self.sidebar)
         layout_sidebar.setContentsMargins(15, 25, 15, 25)
-        layout_sidebar.setSpacing(15) # Espacement augmenté
+        layout_sidebar.setSpacing(15)
         
         # Titre module
         lbl_module = QLabel("📦 STOCK PRO")
@@ -114,12 +113,31 @@ class StockManagerView(QMainWindow):
         
         layout_sidebar.addStretch()
         
-        # Info utilisateur bas sidebar
+        # Info utilisateur
         lbl_user = QLabel(f"👤 {self.nom_utilisateur}")
         lbl_user.setStyleSheet("color: #757575; font-size: 11pt; font-weight: bold; padding: 10px;")
         lbl_user.setAlignment(Qt.AlignCenter)
         layout_sidebar.addWidget(lbl_user)
 
+        # Bouton déconnexion (Style Caisse - Bas Sidebar)
+        btn_logout = QPushButton("🚪 Déconnexion")
+        btn_logout.setFixedHeight(45)
+        btn_logout.setStyleSheet("""
+            QPushButton {
+                color: #FF3D00;
+                background-color: transparent;
+                border: 1px solid #FF3D00;
+                border-radius: 8px;
+                font-size: 11pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 61, 0, 0.1);
+            }
+        """)
+        btn_logout.clicked.connect(self._deconnecter)
+        layout_sidebar.addWidget(btn_logout)
+        
         parent_layout.addWidget(self.sidebar)
     
     def _creer_btn_sidebar(self, icone: str, texte: str, actif: bool) -> QPushButton:
@@ -127,13 +145,13 @@ class StockManagerView(QMainWindow):
         btn = QPushButton(f"{icone}  {texte}")
         btn.setCheckable(True)
         btn.setChecked(actif)
-        btn.setFixedHeight(60) # Plus haut
+        btn.setFixedHeight(60)
         
         style_base = """
             QPushButton {
                 background-color: transparent;
                 color: #B0B0C0;
-                font-size: 14pt; /* Police plus grande */
+                font-size: 14pt;
                 font-weight: bold;
                 border-radius: 10px;
                 padding-left: 20px;
@@ -153,53 +171,44 @@ class StockManagerView(QMainWindow):
         return btn
     
     def _creer_top_bar(self, parent_layout):
-        """Barre de titre avec date et logout"""
+        """Barre supérieure style Caisse (Sombre)"""
         top_bar = QFrame()
-        top_bar.setFixedHeight(70) # Barre plus haute
+        top_bar.setFixedHeight(60) # Hauteur standard Caisse
         top_bar.setStyleSheet("""
             QFrame {
-                background-color: white;
-                border-bottom: 1px solid #E0E0E0;
+                background-color: #1E1E2E;
+                border-bottom: 1px solid #3E3E5E;
             }
         """)
         
         layout_top = QHBoxLayout(top_bar)
-        layout_top.setContentsMargins(30, 10, 30, 10)
+        layout_top.setContentsMargins(20, 0, 20, 0)
         
-        # Titre écran (dynamique)
-        self.lbl_titre_ecran = QLabel("Tableau de Stock")
-        self.lbl_titre_ecran.setStyleSheet("font-size: 20pt; font-weight: bold; color: #2A2A40;")
+        # Titre écran (Vert)
+        self.lbl_titre_ecran = QLabel("TABLEAU DE STOCK")
+        self.lbl_titre_ecran.setStyleSheet("font-size: 14pt; font-weight: bold; color: #00C853;")
         layout_top.addWidget(self.lbl_titre_ecran)
         
         layout_top.addStretch()
         
-        # Date/Heure
-        now = datetime.now()
-        lbl_date = QLabel(now.strftime("%d/%m/%Y"))
-        lbl_date.setStyleSheet("font-size: 12pt; color: #757575; font-weight: bold; margin-right: 20px;")
-        layout_top.addWidget(lbl_date)
+        # Date/Heure (Blanc)
+        from datetime import datetime
+        from PySide6.QtCore import QTimer
         
-        # Bouton Déconnexion (Rouge, Top Right)
-        btn_logout = QPushButton("Déconnexion")
-        btn_logout.setIcon(qta.icon('fa5s.sign-out-alt', color='white'))
-        btn_logout.setFixedSize(160, 45)
-        btn_logout.setStyleSheet("""
-            QPushButton {
-                background-color: #F44336;
-                color: white;
-                font-size: 12pt;
-                font-weight: bold;
-                border-radius: 22px;
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #D32F2F;
-            }
-        """)
-        btn_logout.clicked.connect(self._deconnecter)
-        layout_top.addWidget(btn_logout)
+        self.lbl_heure = QLabel()
+        self.lbl_heure.setStyleSheet("color: white; font-size: 12pt; font-weight: bold;")
+        layout_top.addWidget(self.lbl_heure)
+        
+        # Timer Heure
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._update_time)
+        self.timer.start(1000)
+        self._update_time()
         
         parent_layout.addWidget(top_bar)
+
+    def _update_time(self):
+        self.lbl_heure.setText(datetime.now().strftime("%H:%M:%S"))
     
     def _initialiser_ecrans(self):
         """Initialise et ajoute tous les écrans"""
