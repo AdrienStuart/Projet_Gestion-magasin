@@ -16,6 +16,7 @@ from views.gestionnaire_stock.stock_table_screen import StockTableScreen
 from views.gestionnaire_stock.movements_screen import MovementsScreen
 from views.gestionnaire_stock.alerts_screen import AlertsScreen
 from views.gestionnaire_stock.stock_stats_screen import StockStatsScreen
+from views.gestionnaire_stock.signalements_screen import SignalementsScreen
 
 
 class StockManagerView(QWidget):
@@ -103,9 +104,13 @@ class StockManagerView(QWidget):
         self.btn_mouvements.clicked.connect(self.afficher_mouvements)
         layout_sidebar.addWidget(self.btn_mouvements)
         
-        self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes", False)
+        self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes (Vue Simple)", False)
         self.btn_alertes.clicked.connect(self.afficher_alertes)
         layout_sidebar.addWidget(self.btn_alertes)
+        
+        self.btn_signalements = self._creer_btn_sidebar("🚥", "Centre Signalements", False)
+        self.btn_signalements.clicked.connect(self.afficher_signalements)
+        layout_sidebar.addWidget(self.btn_signalements)
         
         self.btn_stats = self._creer_btn_sidebar("📊", "Statistiques", False)
         self.btn_stats.clicked.connect(self.afficher_statistiques)
@@ -229,7 +234,11 @@ class StockManagerView(QWidget):
         self.ecran_alertes = AlertsScreen(self.id_utilisateur)
         self.stacked_widget.addWidget(self.ecran_alertes)
         
-        # Écran 3: Statistiques
+        # Écran 3: Signalements (Centre de Commande)
+        self.ecran_signalements = SignalementsScreen(self.id_utilisateur)
+        self.stacked_widget.addWidget(self.ecran_signalements)
+
+        # Écran 4: Statistiques
         self.ecran_stats = StockStatsScreen(self.id_utilisateur)
         self.stacked_widget.addWidget(self.ecran_stats)
     
@@ -237,35 +246,42 @@ class StockManagerView(QWidget):
     
     def afficher_tableau_stock(self):
         """Affiche le tableau de stock"""
-        self._activer_bouton(self.btn_stock)
+        self._update_active_btn(self.btn_stock)
         self.stacked_widget.setCurrentIndex(self.INDEX_STOCK)
         self.lbl_titre_ecran.setText("📋 Tableau de Stock")
         self.ecran_stock.rafraichir()
     
     def afficher_mouvements(self):
         """Affiche l'écran des mouvements"""
-        self._activer_bouton(self.btn_mouvements)
+        self._update_active_btn(self.btn_mouvements)
         self.stacked_widget.setCurrentIndex(self.INDEX_MOUVEMENTS)
         self.lbl_titre_ecran.setText("🔄 Mouvements & Historique")
         self.ecran_mouvements.rafraichir()
     
     def afficher_alertes(self):
         """Affiche les alertes"""
-        self._activer_bouton(self.btn_alertes)
+        self._update_active_btn(self.btn_alertes)
         self.stacked_widget.setCurrentIndex(self.INDEX_ALERTES)
         self.lbl_titre_ecran.setText("⚠️ Alertes Stock")
         self.ecran_alertes.rafraichir()
     
+    def afficher_signalements(self):
+        """Affiche le Centre de Signalements"""
+        self._update_active_btn(self.btn_signalements)
+        self.stacked_widget.setCurrentIndex(self.INDEX_SIGNALEMENTS)
+        self.lbl_titre_ecran.setText("🚥 Centre de Signalements")
+        self.ecran_signalements.rafraichir()
+    
     def afficher_statistiques(self):
         """Affiche les statistiques"""
-        self._activer_bouton(self.btn_stats)
+        self._update_active_btn(self.btn_stats)
         self.stacked_widget.setCurrentIndex(self.INDEX_STATS)
         self.lbl_titre_ecran.setText("📊 Statistiques")
         self.ecran_stats.rafraichir()
     
-    def _activer_bouton(self, btn_actif):
+    def _update_active_btn(self, btn_actif):
         """Active un bouton et désactive les autres"""
-        for btn in [self.btn_stock, self.btn_mouvements, self.btn_alertes, self.btn_stats]:
+        for btn in [self.btn_stock, self.btn_mouvements, self.btn_alertes, self.btn_signalements, self.btn_stats]:
             btn.setChecked(btn == btn_actif)
     
     def _deconnecter(self):
