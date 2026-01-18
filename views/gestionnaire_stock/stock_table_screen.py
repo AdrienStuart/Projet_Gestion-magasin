@@ -80,6 +80,7 @@ class StockTableScreen(QWidget):
                 background-color: #4E4E6E;
             }
         """)
+        self.input_recherche.textChanged.connect(self.appliquer_filtres) # Recherche dynamique
         layout_filtres.addWidget(self.input_recherche)
         
         layout_filtres.addSpacing(20)
@@ -155,8 +156,8 @@ class StockTableScreen(QWidget):
                 padding: 5px 10px;
                 color: #2A2A40; /* Texte gris foncé (pas noir complet) */
             }
+            /* La couleur de sélection est gérée dynamiquement par _on_selection_changed */
             QTableWidget::item:selected {
-                background-color: #00C853; /* Vert Caisse */
                 color: white;
             }
             QHeaderView::section {
@@ -170,10 +171,67 @@ class StockTableScreen(QWidget):
             }
         """)
         
-        # Double-clic pour historique (futur)
+        # Connexions
         self.table_stock.doubleClicked.connect(self.voir_historique_produit)
+        self.table_stock.itemSelectionChanged.connect(self._on_selection_changed)
         
         parent_layout.addWidget(self.table_stock, stretch=1)
+
+    def _on_selection_changed(self):
+        """Change la couleur de sélection selon le statut du produit"""
+        selected_rows = self.table_stock.selectionModel().selectedRows()
+        if not selected_rows:
+            return
+            
+        row = selected_rows[0].row()
+        # On récupère le statut (colonne 5) pour déterminer la couleur
+        # Note: On stocke la couleur "brute" dans l'item statut, ou on déduit du texte
+        item_statut = self.table_stock.item(row, 5)
+        if not item_statut:
+            return
+            
+        text_statut = item_statut.text()
+        
+        color_hex = "#00C853" # Default vert (OK)
+        if "RUPTURE" in text_statut:
+            color_hex = "#F44336" # Rouge
+        elif "CRITIQUE" in text_statut:
+            color_hex = "#FF9800" # Orange
+            
+        # Mise à jour dynamique du style pour la sélection
+        current_style = self.table_stock.styleSheet()
+        
+        # On remplace ou ajoute la règle de sélection
+        # C'est un peu brut mais efficace pour garantir le changement visuel immédiat
+        new_style = """
+            QTableWidget {
+                font-size: 13pt;
+                alternate-background-color: #F0F4F8;
+                background-color: white;
+                gridline-color: #E0E0E0;
+                border: none;
+                selection-background-color: %s; /* DYNAMIQUE */
+            }
+            QTableWidget::item {
+                padding: 5px 10px;
+                color: #2A2A40;
+            }
+            QTableWidget::item:selected {
+                color: white;
+                background-color: %s; /* DYNAMIQUE */
+            }
+            QHeaderView::section {
+                background-color: #F5F5F5;
+                color: #2A2A40;
+                padding: 10px;
+                font-size: 11pt;
+                font-weight: bold;
+                border: none;
+                border-bottom: 2px solid #E0E0E0;
+            }
+        """ % (color_hex, color_hex)
+        
+        self.table_stock.setStyleSheet(new_style)
     
     def _creer_legende(self, parent_layout):
         """Légende des couleurs de statut"""
@@ -252,6 +310,22 @@ class StockTableScreen(QWidget):
         """Affiche les données dans la table"""
         self.table_stock.setRowCount(0)
         
+        if not donnees:
+            row = self.table_stock.rowCount()
+            self.table_stock.insertRow(row)
+            item = QTableWidgetItem("⚠️ Aucun produit trouvé avec ces critères")
+            item.setTextAlignment(Qt.AlignCenter)
+            font = QFont()
+            font.setItalic(True)
+            font.setPointSize(12)
+            item.setFont(font)
+            item.setForeground(QColor("#757575"))
+            self.table_stock.setItem(row, 0, item)
+            self.table_stock.setSpan(row, 0, 1, 6)
+            # Revert to default selection color style if empty to avoid weird artifacts
+            self.table_stock.setStyleSheet(self.table_stock.styleSheet().replace("selection-background-color", "selection-background-color-unused")) 
+            return
+            
         for produit in donnees:
             row = self.table_stock.rowCount()
             self.table_stock.insertRow(row)
