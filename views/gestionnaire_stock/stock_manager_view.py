@@ -4,10 +4,10 @@ Architecture avec sidebar et écrans modulaires
 Principe: Efficacité opérationnelle, pas de fioritures
 """
 
-from PySide6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
+from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
                                QStackedWidget, QLabel, QFrame)
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 import qtawesome as qta
 from datetime import datetime
 
@@ -18,7 +18,7 @@ from views.gestionnaire_stock.alerts_screen import AlertsScreen
 from views.gestionnaire_stock.stock_stats_screen import StockStatsScreen
 
 
-class StockManagerView(QWidget):
+class StockManagerView(QMainWindow):
     """
     Vue principale du gestionnaire de stock
     Interface sobre, dense, axée sur l'efficacité
@@ -33,6 +33,9 @@ class StockManagerView(QWidget):
     def __init__(self, id_utilisateur: int = 1, nom_utilisateur: str = "Gestionnaire"):
         super().__init__()
         
+        self.setWindowTitle("Gestionnaire de Stock")
+        self.resize(1280, 800) # Taille par défaut ajustée
+        
         self.id_utilisateur = id_utilisateur
         self.nom_utilisateur = nom_utilisateur
         self.is_sidebar_collapsed = False
@@ -42,7 +45,11 @@ class StockManagerView(QWidget):
     
     def setup_ui(self):
         """Construction de l'interface principale"""
-        layout_principal = QHBoxLayout(self)
+        # Widget central pour QMainWindow
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        
+        layout_principal = QHBoxLayout(self.central_widget)
         layout_principal.setContentsMargins(0, 0, 0, 0)
         layout_principal.setSpacing(0)
         
@@ -68,7 +75,7 @@ class StockManagerView(QWidget):
     def _creer_sidebar(self, parent_layout):
         """Crée la sidebar de navigation"""
         self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(250)
+        self.sidebar.setFixedWidth(260) # Légèrement plus large
         self.sidebar.setStyleSheet("""
             QFrame {
                 background-color: #2A2A40;
@@ -77,16 +84,16 @@ class StockManagerView(QWidget):
         """)
         
         layout_sidebar = QVBoxLayout(self.sidebar)
-        layout_sidebar.setContentsMargins(10, 20, 10, 20)
-        layout_sidebar.setSpacing(5)
+        layout_sidebar.setContentsMargins(15, 25, 15, 25)
+        layout_sidebar.setSpacing(15) # Espacement augmenté
         
         # Titre module
-        lbl_module = QLabel("📦 GESTION STOCK")
-        lbl_module.setStyleSheet("color: white; font-size: 16pt; font-weight: bold; padding: 10px;")
+        lbl_module = QLabel("📦 STOCK PRO")
+        lbl_module.setStyleSheet("color: #00C853; font-size: 18pt; font-weight: bold; padding: 10px;")
         lbl_module.setAlignment(Qt.AlignCenter)
         layout_sidebar.addWidget(lbl_module)
         
-        layout_sidebar.addSpacing(20)
+        layout_sidebar.addSpacing(30)
         
         # Boutons navigation
         self.btn_stock = self._creer_btn_sidebar("📋", "Tableau de Stock", True)
@@ -97,7 +104,7 @@ class StockManagerView(QWidget):
         self.btn_mouvements.clicked.connect(self.afficher_mouvements)
         layout_sidebar.addWidget(self.btn_mouvements)
         
-        self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes", False)
+        self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes & Ruptures", False)
         self.btn_alertes.clicked.connect(self.afficher_alertes)
         layout_sidebar.addWidget(self.btn_alertes)
         
@@ -107,24 +114,12 @@ class StockManagerView(QWidget):
         
         layout_sidebar.addStretch()
         
-        # Bouton déconnexion
-        btn_logout = QPushButton("🔓 Déconnexion")
-        btn_logout.setStyleSheet("""
-            QPushButton {
-                background-color: #F44336;
-                color: white;
-                font-size: 11pt;
-                font-weight: bold;
-                border-radius: 6px;
-                padding: 12px;
-            }
-            QPushButton:hover {
-                background-color: #E53935;
-            }
-        """)
-        btn_logout.clicked.connect(self._deconnecter)
-        layout_sidebar.addWidget(btn_logout)
-        
+        # Info utilisateur bas sidebar
+        lbl_user = QLabel(f"👤 {self.nom_utilisateur}")
+        lbl_user.setStyleSheet("color: #757575; font-size: 11pt; font-weight: bold; padding: 10px;")
+        lbl_user.setAlignment(Qt.AlignCenter)
+        layout_sidebar.addWidget(lbl_user)
+
         parent_layout.addWidget(self.sidebar)
     
     def _creer_btn_sidebar(self, icone: str, texte: str, actif: bool) -> QPushButton:
@@ -132,24 +127,25 @@ class StockManagerView(QWidget):
         btn = QPushButton(f"{icone}  {texte}")
         btn.setCheckable(True)
         btn.setChecked(actif)
-        btn.setFixedHeight(50)
+        btn.setFixedHeight(60) # Plus haut
         
         style_base = """
             QPushButton {
-                background-color: #3A3A50;
+                background-color: transparent;
                 color: #B0B0C0;
-                font-size: 12pt;
+                font-size: 14pt; /* Police plus grande */
                 font-weight: bold;
-                border-radius: 8px;
-                padding: 10px;
+                border-radius: 10px;
+                padding-left: 20px;
                 text-align: left;
             }
             QPushButton:checked {
-                background-color: #00C853;
-                color: white;
+                background-color: #3A3A50;
+                color: #00C853;
+                border-left: 5px solid #00C853;
             }
             QPushButton:hover {
-                background-color: #4E4E6E;
+                background-color: #32324A;
                 color: white;
             }
         """
@@ -157,31 +153,51 @@ class StockManagerView(QWidget):
         return btn
     
     def _creer_top_bar(self, parent_layout):
-        """Barre de titre avec date"""
+        """Barre de titre avec date et logout"""
         top_bar = QFrame()
-        top_bar.setFixedHeight(60)
+        top_bar.setFixedHeight(70) # Barre plus haute
         top_bar.setStyleSheet("""
             QFrame {
-                background-color: #F5F5F5;
-                border-bottom: 2px solid #E0E0E0;
+                background-color: white;
+                border-bottom: 1px solid #E0E0E0;
             }
         """)
         
         layout_top = QHBoxLayout(top_bar)
-        layout_top.setContentsMargins(20, 10, 20, 10)
+        layout_top.setContentsMargins(30, 10, 30, 10)
         
         # Titre écran (dynamique)
         self.lbl_titre_ecran = QLabel("Tableau de Stock")
-        self.lbl_titre_ecran.setStyleSheet("font-size: 18pt; font-weight: bold; color: #2A2A40;")
+        self.lbl_titre_ecran.setStyleSheet("font-size: 20pt; font-weight: bold; color: #2A2A40;")
         layout_top.addWidget(self.lbl_titre_ecran)
         
         layout_top.addStretch()
         
         # Date/Heure
         now = datetime.now()
-        lbl_date = QLabel(now.strftime("%d/%m/%Y %H:%M"))
-        lbl_date.setStyleSheet("font-size: 11pt; color: #757575;")
+        lbl_date = QLabel(now.strftime("%d/%m/%Y"))
+        lbl_date.setStyleSheet("font-size: 12pt; color: #757575; font-weight: bold; margin-right: 20px;")
         layout_top.addWidget(lbl_date)
+        
+        # Bouton Déconnexion (Rouge, Top Right)
+        btn_logout = QPushButton("Déconnexion")
+        btn_logout.setIcon(qta.icon('fa5s.sign-out-alt', color='white'))
+        btn_logout.setFixedSize(160, 45)
+        btn_logout.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+                color: white;
+                font-size: 12pt;
+                font-weight: bold;
+                border-radius: 22px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #D32F2F;
+            }
+        """)
+        btn_logout.clicked.connect(self._deconnecter)
+        layout_top.addWidget(btn_logout)
         
         parent_layout.addWidget(top_bar)
     
@@ -216,7 +232,7 @@ class StockManagerView(QWidget):
         """Affiche l'écran des mouvements"""
         self._activer_bouton(self.btn_mouvements)
         self.stacked_widget.setCurrentIndex(self.INDEX_MOUVEMENTS)
-        self.lbl_titre_ecran.setText("🔄 Mouvements de Stock")
+        self.lbl_titre_ecran.setText("🔄 Mouvements & Historique")
         self.ecran_mouvements.rafraichir()
     
     def afficher_alertes(self):
@@ -230,7 +246,7 @@ class StockManagerView(QWidget):
         """Affiche les statistiques"""
         self._activer_bouton(self.btn_stats)
         self.stacked_widget.setCurrentIndex(self.INDEX_STATS)
-        self.lbl_titre_ecran.setText("📊 Statistiques Stock")
+        self.lbl_titre_ecran.setText("📊 Statistiques")
         self.ecran_stats.rafraichir()
     
     def _activer_bouton(self, btn_actif):
@@ -241,4 +257,7 @@ class StockManagerView(QWidget):
     def _deconnecter(self):
         """Déconnexion"""
         # Signal vers le contrôleur principal
-        self.parent().parent().controller.logout()
+        if hasattr(self, 'controller') and self.controller:
+            self.controller.logout()
+        else:
+            self.close()

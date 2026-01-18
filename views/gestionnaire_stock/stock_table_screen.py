@@ -133,7 +133,7 @@ class StockTableScreen(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Statut
         
         self.table_stock.verticalHeader().setVisible(False)
-        self.table_stock.verticalHeader().setDefaultSectionSize(45)
+        self.table_stock.verticalHeader().setDefaultSectionSize(60) # Hauteur augmentée pour visibilité
         self.table_stock.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_stock.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table_stock.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -141,7 +141,7 @@ class StockTableScreen(QWidget):
         
         self.table_stock.setStyleSheet("""
             QTableWidget {
-                font-size: 12pt;
+                font-size: 14pt; /* Police plus grande */
                 alternate-background-color: #F9F9F9;
                 background-color: white;
                 gridline-color: #E0E0E0;
@@ -149,7 +149,7 @@ class StockTableScreen(QWidget):
                 border-radius: 8px;
             }
             QTableWidget::item {
-                padding: 5px;
+                padding: 10px; /* Padding augmenté */
             }
             QTableWidget::item:selected {
                 background-color: #2196F3;
@@ -158,8 +158,8 @@ class StockTableScreen(QWidget):
             QHeaderView::section {
                 background-color: #37474F;
                 color: white;
-                padding: 10px;
-                font-size: 11pt;
+                padding: 12px;
+                font-size: 12pt;
                 font-weight: bold;
                 border: none;
             }

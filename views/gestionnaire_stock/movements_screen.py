@@ -204,7 +204,7 @@ class MovementsScreen(QWidget):
         header.setSectionResizeMode(5, QHeaderView.Stretch)            # Motif
         
         self.table_historique.verticalHeader().setVisible(False)
-        self.table_historique.verticalHeader().setDefaultSectionSize(40)
+        self.table_historique.verticalHeader().setDefaultSectionSize(60) # Hauteur augmentée
         self.table_historique.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_historique.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table_historique.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -212,12 +212,15 @@ class MovementsScreen(QWidget):
         
         self.table_historique.setStyleSheet("""
             QTableWidget {
-                font-size: 11pt;
+                font-size: 14pt; /* Police plus grande */
                 alternate-background-color: #F9F9F9;
                 background-color: white;
                 gridline-color: #E0E0E0;
                 border: 1px solid #E0E0E0;
                 border-radius: 8px;
+            }
+            QTableWidget::item {
+                padding: 10px; /* Padding augmenté */
             }
             QTableWidget::item:selected {
                 background-color: #2196F3;
@@ -226,8 +229,8 @@ class MovementsScreen(QWidget):
             QHeaderView::section {
                 background-color: #455A64;
                 color: white;
-                padding: 10px;
-                font-size: 10pt;
+                padding: 12px;
+                font-size: 12pt;
                 font-weight: bold;
                 border: none;
             }
