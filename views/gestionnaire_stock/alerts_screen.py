@@ -6,7 +6,7 @@ Intelligent, pas gadget
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                                QTableWidgetItem, QLabel, QPushButton, QHeaderView,
-                               QAbstractItemView, QFrame, QGroupBox)
+                               QAbstractItemView, QFrame, QGroupBox, QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor
 from datetime import datetime
@@ -16,8 +16,8 @@ from db.database import Database
 
 class AlertsScreen(QWidget):
     """
-    Écran des alertes de stock
-    2 tables séparées: Ruptures + Stock Critique
+    Écran des alertes et signalements persistants
+    Affiche les données de la table AlerteStock
     """
     
     def __init__(self, id_utilisateur: int):
@@ -30,367 +30,260 @@ class AlertsScreen(QWidget):
     def setup_ui(self):
         """Construction de l'interface"""
         layout_principal = QVBoxLayout(self)
-        layout_principal.setContentsMargins(20, 20, 20, 20)
-        layout_principal.setSpacing(20)
+        layout_principal.setContentsMargins(25, 25, 25, 25)
+        layout_principal.setSpacing(25)
         
-        # Section Ruptures
-        self._creer_section_ruptures(layout_principal)
+        # Filtres simples (Actives / Toutes)
+        self._creer_barre_recherche(layout_principal)
         
-        # Section Stock Critique
-        self._creer_section_critique(layout_principal)
+        # Section Alertes Actives
+        self._creer_section_actives(layout_principal)
         
-        # Bouton Produitsà réapprovisionner
+        # Section Historique (Optionnelle/Repliable)
         self._creer_actions(layout_principal)
     
-    def _creer_section_ruptures(self, parent_layout):
-        """Section des ruptures de stock"""
-        group_ruptures = QGroupBox("❌ PRODUITS EN RUPTURE (Stock = 0)")
-        group_ruptures.setStyleSheet("""
+    def _creer_barre_recherche(self, parent_layout):
+        frame = QFrame()
+        frame.setStyleSheet("background-color: #2A2A40; border-radius: 8px; padding: 10px;")
+        layout = QHBoxLayout(frame)
+        
+        lbl = QLabel("🔔 JOURNAL DES SIGNALEMENTS")
+        lbl.setStyleSheet("color: white; font-size: 14pt; font-weight: bold;")
+        layout.addWidget(lbl)
+        
+        layout.addStretch()
+        
+        btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh.setFixedWidth(120)
+        btn_refresh.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                border-radius: 5px;
+                padding: 8px;
+            }
+            QPushButton:hover { background-color: #45a049; }
+        """)
+        btn_refresh.clicked.connect(self.charger_alertes)
+        layout.addWidget(btn_refresh)
+        
+        parent_layout.addWidget(frame)
+
+    def _creer_section_actives(self, parent_layout):
+        """Tableau principal des alertes"""
+        self.group_alertes = QGroupBox("🚧 Alertes en cours de traitement")
+        self.group_alertes.setStyleSheet("""
             QGroupBox {
                 font-size: 13pt;
                 font-weight: bold;
-                color: #D32F2F;
-                border: 2px solid #EF9A9A;
-                border-radius: 8px;
-                margin-top: 15px;
-                padding-top: 25px;
-                background-color: #FAFAFA;
+                color: #2A2A40;
+                border: 2px solid #E0E0E0;
+                border-radius: 10px;
+                margin-top: 20px;
+                padding-top: 30px;
+                background-color: white;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 8px;
-                background-color: #FFEBEE;
-                border: 1px solid #EF9A9A;
-                border-radius: 4px;
+                left: 20px;
+                padding: 0 10px;
+                background-color: #F8F9FA;
             }
         """)
         
-        layout_ruptures = QVBoxLayout(group_ruptures)
+        layout = QVBoxLayout(self.group_alertes)
         
-        # Table ruptures
-        self.table_ruptures = QTableWidget()
-        self.table_ruptures.setColumnCount(4)
-        self.table_ruptures.setHorizontalHeaderLabels([
-            "Produit", "Catégorie", "Seuil", "Jours en rupture"
+        self.table_alertes = QTableWidget()
+        self.table_alertes.setColumnCount(7)
+        self.table_alertes.setHorizontalHeaderLabels([
+            "ID", "Priorité", "Statut", "Produit", "Stock/Seuil", "Date Création", "Actions"
         ])
         
-        # Configuration
-        # Configuration
-        header = self.table_ruptures.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Produit (Stretch naturel)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Catégorie
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Seuil
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Jours
+        header = self.table_alertes.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.Fixed)
+        self.table_alertes.setColumnWidth(6, 180)
         
-        self.table_ruptures.verticalHeader().setVisible(False)
-        self.table_ruptures.verticalHeader().setDefaultSectionSize(50) # Hauteur augmentée
-        self.table_ruptures.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table_ruptures.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table_ruptures.setMaximumHeight(300) # Un peu plus haut
+        self.table_alertes.verticalHeader().setVisible(False)
+        self.table_alertes.verticalHeader().setDefaultSectionSize(60)
+        self.table_alertes.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table_alertes.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
-        self.table_ruptures.setStyleSheet("""
+        self.table_alertes.setStyleSheet("""
             QTableWidget {
-                font-size: 13pt;
-                background-color: white;
-                gridline-color: #F5F5F5;
-                border: 1px solid #E0E0E0;
-                border-radius: 4px;
-            }
-            QTableWidget::item {
-                padding: 8px 10px;
-            }
-            QTableWidget::item:selected {
-                background-color: #FFEBEE;
-                color: #D32F2F;
+                font-size: 12pt;
+                border: none;
+                gridline-color: #F0F0F0;
             }
             QHeaderView::section {
                 background-color: #2A2A40;
                 color: white;
                 padding: 12px;
-                font-size: 11pt;
                 font-weight: bold;
                 border: none;
             }
         """)
         
-        layout_ruptures.addWidget(self.table_ruptures)
-        
-        parent_layout.addWidget(group_ruptures)
-    
-    def _creer_section_critique(self, parent_layout):
-        """Section du stock critique"""
-        group_critique = QGroupBox("⚠️ STOCK CRITIQUE (Stock ≤ Seuil)")
-        group_critique.setStyleSheet("""
-            QGroupBox {
-                font-size: 13pt;
-                font-weight: bold;
-                color: #E65100;
-                border: 2px solid #FFCC80;
-                border-radius: 8px;
-                margin-top: 15px;
-                padding-top: 25px;
-                background-color: #FAFAFA;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 8px;
-                background-color: #FFF3E0;
-                border: 1px solid #FFCC80;
-                border-radius: 4px;
-            }
-        """)
-        
-        layout_critique = QVBoxLayout(group_critique)
-        
-        # Table critique
-        self.table_critique = QTableWidget()
-        self.table_critique.setColumnCount(5)
-        self.table_critique.setHorizontalHeaderLabels([
-            "Produit", "Catégorie", "Stock Actuel", "Seuil", "Manquant"
-        ])
-        
-        # Configuration
-        header = self.table_critique.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Produit (Natural stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Catégorie
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Stock
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Seuil
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Manquant
-        
-        self.table_critique.verticalHeader().setVisible(False)
-        self.table_critique.verticalHeader().setDefaultSectionSize(50) # Hauteur augmentée
-        self.table_critique.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table_critique.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        
-        self.table_critique.setStyleSheet("""
-            QTableWidget {
-                font-size: 13pt;
-                background-color: white;
-                gridline-color: #F5F5F5;
-                border: 1px solid #E0E0E0;
-                border-radius: 4px;
-            }
-            QTableWidget::item {
-                padding: 8px 10px;
-            }
-            QTableWidget::item:selected {
-                background-color: #FFF3E0;
-                color: #E65100;
-            }
-            QHeaderView::section {
-                background-color: #2A2A40;
-                color: white;
-                padding: 12px;
-                font-size: 11pt;
-                font-weight: bold;
-                border: none;
-            }
-        """)
-        
-        layout_critique.addWidget(self.table_critique)
-        
-        parent_layout.addWidget(group_critique, stretch=1)
-    
+        layout.addWidget(self.table_alertes)
+        parent_layout.addWidget(self.group_alertes, stretch=1)
+
     def _creer_actions(self, parent_layout):
-        """Boutons d'actions"""
-        layout_actions = QHBoxLayout()
+        layout = QHBoxLayout()
         
-        # Info
-        lbl_info = QLabel("💡 Astuce: Cliquez sur un produit puis allez dans Mouvements pour créer une entrée")
-        lbl_info.setStyleSheet("color: #757575; font-size: 10pt; font-style: italic;")
-        layout_actions.addWidget(lbl_info)
+        lbl_info = QLabel("💡 Astuce: Les alertes sont archivées automatiquement quand le stock remonte.")
+        lbl_info.setStyleSheet("color: #757575; font-style: italic;")
+        layout.addWidget(lbl_info)
         
-        layout_actions.addStretch()
+        layout.addStretch()
         
-        # Bouton liste réapprovisionnement
-        btn_reappro = QPushButton("📋 Liste de Réapprovisionnement")
-        btn_reappro.setFixedHeight(45)
-        btn_reappro.setStyleSheet("""
+        self.btn_liste_reappro = QPushButton("📋 Liste de Réapprovisionnement")
+        self.btn_liste_reappro.setFixedHeight(45)
+        self.btn_liste_reappro.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
                 color: white;
-                font-size: 12pt;
                 font-weight: bold;
                 border-radius: 8px;
-                padding: 0 25px;
-            }
-            QPushButton:hover {
-                background-color: #42A5F5;
+                padding: 0 20px;
             }
         """)
-        btn_reappro.clicked.connect(self.generer_liste_reappro)
-        layout_actions.addWidget(btn_reappro)
+        self.btn_liste_reappro.clicked.connect(self.generer_liste_reappro)
+        layout.addWidget(self.btn_liste_reappro)
         
-        parent_layout.addLayout(layout_actions)
-    
-    # ========== LOGIQUE ==========
-    
+        parent_layout.addLayout(layout)
+
     def charger_alertes(self):
-        """Charge les alertes depuis la base"""
-        alertes = Database.get_stock_alerts()
+        """Charge les données de AlerteStock"""
+        alertes = Database.get_persistent_alerts()
+        self.afficher_alertes(alertes)
+
+    def afficher_alertes(self, alertes):
+        self.table_alertes.setRowCount(0)
         
-        # Séparer ruptures et critiques
-        ruptures = [a for a in alertes if a.get('stockactuel', 0) == 0]
-        critiques = [a for a in alertes if a.get('stockactuel', 0) > 0]
-        
-        self.afficher_ruptures(ruptures)
-        self.afficher_critiques(critiques)
-    
-    def afficher_ruptures(self, ruptures):
-        """Affiche les produits en rupture"""
-        self.table_ruptures.setRowCount(0)
-        
-        if not ruptures:
-            # Message si aucune rupture
-            row = self.table_ruptures.rowCount()
-            self.table_ruptures.insertRow(row)
-            item = QTableWidgetItem("✨ Félicitations ! Aucun produit n'est en rupture totale.")
+        if not alertes:
+            self.table_alertes.insertRow(0)
+            item = QTableWidgetItem("✨ Aucune alerte de stock active. Beau travail !")
             item.setTextAlignment(Qt.AlignCenter)
-            item.setForeground(QColor("#00C853"))
-            font = QFont()
-            font.setBold(True)
-            font.setPointSize(12)
-            item.setFont(font)
-            self.table_ruptures.setItem(row, 0, item)
-            self.table_ruptures.setSpan(row, 0, 1, 4)
+            item.setForeground(QColor("#4CAF50"))
+            self.table_alertes.setItem(0, 0, item)
+            self.table_alertes.setSpan(0, 0, 1, 7)
             return
-        
-        for produit in ruptures:
-            row = self.table_ruptures.rowCount()
-            self.table_ruptures.insertRow(row)
+
+        for a in alertes:
+            # On n'affiche que les alertes non archivées dans la vue principale
+            if a['statut'] in ['ARCHIVEE', 'COMMANDE_PASSEE']: continue
             
-            # Produit (Gars, 14pt)
-            item_nom = QTableWidgetItem(produit['nom'])
-            font_nom = QFont()
-            font_nom.setBold(True)
-            font_nom.setPointSize(14)
-            item_nom.setFont(font_nom)
-            self.table_ruptures.setItem(row, 0, item_nom)
+            row = self.table_alertes.rowCount()
+            self.table_alertes.insertRow(row)
             
-            # Catégorie
-            self.table_ruptures.setItem(row, 1, QTableWidgetItem(produit.get('categorie', 'N/A')))
+            # ID
+            self.table_alertes.setItem(row, 0, QTableWidgetItem(f"#{a['id_alerte']}"))
             
-            # Seuil
-            seuil = produit.get('stockalerte', 0)
-            item_seuil = QTableWidgetItem(str(seuil))
-            item_seuil.setTextAlignment(Qt.AlignCenter)
-            self.table_ruptures.setItem(row, 2, item_seuil)
+            # Priorité
+            item_prio = QTableWidgetItem(a['priorite'])
+            item_prio.setTextAlignment(Qt.AlignCenter)
+            color = "#000000"
+            bg_color = "#FFFFFF"
+            if a['priorite'] == 'CRITICAL': 
+                bg_color = "#FFEBEE"; color = "#D32F2F"
+            elif a['priorite'] == 'HIGH':
+                bg_color = "#FFF3E0"; color = "#EF6C00"
+            elif a['priorite'] == 'MEDIUM':
+                bg_color = "#E3F2FD"; color = "#1976D2"
             
-            # Jours en rupture (estimation)
-            jours = produit.get('jours_rupture', 0) or 0
-            item_jours = QTableWidgetItem(f"🔴 {jours} jours" if jours else "🔴 Récent")
-            item_jours.setTextAlignment(Qt.AlignCenter)
-            item_jours.setForeground(QColor("#D32F2F"))
-            font_jours = QFont()
-            font_jours.setBold(True)
-            item_jours.setFont(font_jours)
-            self.table_ruptures.setItem(row, 3, item_jours)
-    
-    def afficher_critiques(self, critiques):
-        """Affiche les produits en stock critique"""
-        self.table_critique.setRowCount(0)
-        
-        if not critiques:
-            # Message si tout va bien
-            row = self.table_critique.rowCount()
-            self.table_critique.insertRow(row)
-            item = QTableWidgetItem("✅ Tout est sous contrôle : aucun stock critique détecté.")
-            item.setTextAlignment(Qt.AlignCenter)
-            item.setForeground(QColor("#00C853"))
-            font = QFont()
-            font.setBold(True)
-            font.setPointSize(12)
-            item.setFont(font)
-            self.table_critique.setItem(row, 0, item)
-            self.table_critique.setSpan(row, 0, 1, 5)
-            return
-        
-        for produit in critiques:
-            row = self.table_critique.rowCount()
-            self.table_critique.insertRow(row)
+            item_prio.setBackground(QColor(bg_color))
+            item_prio.setForeground(QColor(color))
+            font = QFont(); font.setBold(True)
+            item_prio.setFont(font)
+            self.table_alertes.setItem(row, 1, item_prio)
             
-            # Produit (Gras, 14pt)
-            item_nom = QTableWidgetItem(produit['nom'])
-            font_nom = QFont()
-            font_nom.setBold(True)
-            font_nom.setPointSize(14)
-            item_nom.setFont(font_nom)
-            self.table_critique.setItem(row, 0, item_nom)
+            # Statut
+            item_statut = QTableWidgetItem(a['statut'].replace('_', ' '))
+            item_statut.setTextAlignment(Qt.AlignCenter)
+            self.table_alertes.setItem(row, 2, item_statut)
             
-            # Catégorie
-            self.table_critique.setItem(row, 1, QTableWidgetItem(produit.get('categorie', 'N/A')))
+            # Produit
+            item_prod = QTableWidgetItem(a['nom_produit'])
+            item_prod.setFont(font)
+            self.table_alertes.setItem(row, 3, item_prod)
             
-            # Stock actuel
-            stock = produit.get('stockactuel', 0)
-            item_stock = QTableWidgetItem(f"⚠️ {stock}")
-            item_stock.setTextAlignment(Qt.AlignCenter)
-            item_stock.setForeground(QColor("#E65100"))
-            font_stock = QFont()
-            font_stock.setBold(True)
-            item_stock.setFont(font_stock)
-            self.table_critique.setItem(row, 2, item_stock)
+            # Stock/Seuil
+            item_valeurs = QTableWidgetItem(f"{a['stock_alerte']} / {a['seuil_vise']}")
+            item_valeurs.setTextAlignment(Qt.AlignCenter)
+            self.table_alertes.setItem(row, 4, item_valeurs)
             
-            # Seuil
-            seuil = produit.get('stockalerte', 0)
-            item_seuil = QTableWidgetItem(str(seuil))
-            item_seuil.setTextAlignment(Qt.AlignCenter)
-            self.table_critique.setItem(row, 3, item_seuil)
+            # Date
+            date_str = a['date_creation'].strftime("%d/%m %H:%M")
+            self.table_alertes.setItem(row, 5, QTableWidgetItem(date_str))
             
-            # Manquant
-            manquant = max(0, seuil - stock)
-            item_manquant = QTableWidgetItem(f"⬇️ {manquant}")
-            item_manquant.setTextAlignment(Qt.AlignCenter)
-            item_manquant.setForeground(QColor("#D32F2F"))
-            item_manquant.setFont(font_stock)
-            self.table_critique.setItem(row, 4, item_manquant)
-    
+            # ACTIONS
+            container = QWidget()
+            lay = QHBoxLayout(container)
+            lay.setContentsMargins(5, 5, 5, 5)
+            lay.setSpacing(5)
+            
+            btn_vu = QPushButton("👁️")
+            btn_vu.setToolTip("Marquer comme VU")
+            btn_vu.setFixedSize(35, 35)
+            btn_vu.clicked.connect(lambda _, aid=a['id_alerte']: self.update_statut(aid, 'VU'))
+            
+            btn_process = QPushButton("🔧")
+            btn_process.setToolTip("En cours de traitement")
+            btn_process.setFixedSize(35, 35)
+            btn_process.clicked.connect(lambda _, aid=a['id_alerte']: self.update_statut(aid, 'EN_COURS'))
+
+            btn_archive = QPushButton("📁")
+            btn_archive.setToolTip("Archiver")
+            btn_archive.setFixedSize(35, 35)
+            btn_archive.clicked.connect(lambda _, aid=a['id_alerte']: self.update_statut(aid, 'ARCHIVEE'))
+            
+            lay.addWidget(btn_vu); lay.addWidget(btn_process); lay.addWidget(btn_archive)
+            self.table_alertes.setCellWidget(row, 6, container)
+
+    def update_statut(self, alert_id, new_status):
+        if Database.update_alert_status(alert_id, new_status):
+            self.charger_alertes()
+        else:
+            QMessageBox.critical(self, "Erreur", "Impossible de mettre à jour le statut.")
+
     def generer_liste_reappro(self):
-        """Génère une liste de réapprovisionnement (futur module Achats)"""
+        """Dialogue de liste de réapprovisionnement"""
         from PySide6.QtWidgets import QDialog, QTextEdit, QDialogButtonBox
         
-        # Récupérer produits à réapprovisionner
         produits = Database.get_products_to_restock()
         
-        # Créer dialogue
         dialog = QDialog(self)
-        dialog.setWindowTitle("Liste de Réapprovisionnement")
-        dialog.resize(600, 400)
+        dialog.setWindowTitle("📋 Liste de Réapprovisionnement")
+        dialog.resize(600, 450)
+        lay = QVBoxLayout(dialog)
         
-        layout = QVBoxLayout(dialog)
+        txt = QTextEdit()
+        txt.setReadOnly(True)
+        txt.setFont(QFont("Monospace", 10))
         
-        lbl_titre = QLabel("📋 Produits à commander:")
-        lbl_titre.setStyleSheet("font-size: 13pt; font-weight: bold;")
-        layout.addWidget(lbl_titre)
+        content = "=== LISTE DE RÉAPPROVISIONNEMENT ===\n"
+        content += f"Généré le : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+        content += "-" * 40 + "\n\n"
         
-        text_liste = QTextEdit()
-        text_liste.setReadOnly(True)
+        for p in produits:
+            content += f"• {p['nom']} :\n"
+            content += f"  Stock actuel : {p['stockactuel']} | Seuil : {p['stockalerte']}\n"
+            content += f"  QUANTITÉ SUGGÉRÉE : {p['qte_suggere']} unités\n\n"
         
-        if not produits:
-            text_liste.setPlainText("✅ Aucun produit nécessite un réapprovisionnement.")
-        else:
-            contenu = "LISTE DE RÉAPPROVISIONNEMENT\n"
-            contenu += "=" * 50 + "\n\n"
-            for p in produits:
-                nom = p.get('nom', '')
-                stock = p.get('stockactuel', 0)
-                seuil = p.get('stockalerte', 0)
-                suggere = max(seuil * 2 - stock, seuil)  # Quantité suggérée
-                contenu += f"• {nom}\n"
-                contenu += f"  Stock: {stock} | Seuil: {seuil} | Suggéré: {suggere}\n\n"
-            
-            text_liste.setPlainText(contenu)
-        
-        text_liste.setStyleSheet("font-size: 11pt; font-family: monospace;")
-        layout.addWidget(text_liste)
+        txt.setPlainText(content)
+        lay.addWidget(txt)
         
         btns = QDialogButtonBox(QDialogButtonBox.Ok)
         btns.accepted.connect(dialog.accept)
-        layout.addWidget(btns)
+        lay.addWidget(btns)
         
         dialog.exec()
-    
+
     def rafraichir(self):
-        """Rafraîchit les alertes"""
         self.charger_alertes()

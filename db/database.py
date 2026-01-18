@@ -624,6 +624,84 @@ class Database:
             conn.close()
     
     @staticmethod
+    def get_persistent_alerts():
+        """Récupère les alertes persistantes de la table AlerteStock"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT 
+                    a.Id_Alerte as id_alerte,
+                    a.Id_Produit as id_produit,
+                    p.Nom as nom_produit,
+                    a.Stock_Au_Moment_Alerte as stock_alerte,
+                    a.Seuil_Alerte_Vise as seuil_vise,
+                    a.Priorite as priorite,
+                    a.Statut as statut,
+                    a.Commentaire as commentaire,
+                    a.Date_Creation as date_creation,
+                    a.Date_Traitement as date_traitement
+                FROM AlerteStock a
+                JOIN Produit p ON a.Id_Produit = p.Id_Produit
+                ORDER BY 
+                    CASE 
+                        WHEN a.Priorite = 'CRITICAL' THEN 1
+                        WHEN a.Priorite = 'HIGH' THEN 2
+                        WHEN a.Priorite = 'MEDIUM' THEN 3
+                        ELSE 4
+                    END,
+                    a.Date_Creation DESC
+            """)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_persistent_alerts: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def update_alert_status(alert_id, new_status, comment=None):
+        """Met à jour le statut d'une alerte"""
+        conn = Database.get_connection()
+        if not conn:
+            return False
+        
+        cur = connection.get_cursor(conn)
+        try:
+            date_traitement = "NULL"
+            if new_status in ['EN_COURS', 'COMMANDE_PASSEE', 'ARCHIVEE']:
+                date_traitement = "CURRENT_TIMESTAMP"
+                
+            query = f"""
+                UPDATE AlerteStock 
+                SET Statut = %s,
+                    Date_Traitement = {date_traitement}
+            """
+            
+            params = [new_status]
+            if comment:
+                query += ", Commentaire = COALESCE(Commentaire, '') || %s"
+                params.append(f" | Update: {comment}")
+                
+            query += " WHERE Id_Alerte = %s"
+            params.append(alert_id)
+            
+            cur.execute(query, tuple(params))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            print(f"Erreur update_alert_status: {e}")
+            return False
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
     def get_all_categories():
         """Récupère toutes les catégories"""
         conn = Database.get_connection()

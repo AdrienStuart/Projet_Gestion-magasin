@@ -7,10 +7,12 @@ Règle: JAMAIS de modification directe du stock
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                                QTableWidgetItem, QLabel, QComboBox, QSpinBox,
                                QTextEdit, QPushButton, QHeaderView, QAbstractItemView,
-                               QFrame, QMessageBox, QGroupBox)
+                               QFrame, QMessageBox, QGroupBox, QDialog,
+                               QScrollArea, QDialogButtonBox, QGridLayout)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPixmap
 from datetime import datetime
+import os
 
 from db.database import Database
 
@@ -469,7 +471,6 @@ class DialogueCatalogue(QDialog):
         layout.addWidget(lbl_titre)
         
         # Zone scrollable
-        from PySide6.QtWidgets import QScrollArea, QDialogButtonBox, QGridLayout
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         
@@ -485,8 +486,6 @@ class DialogueCatalogue(QDialog):
         layout.addWidget(buttons)
     
     def charger_produits(self):
-        import os
-        from PySide6.QtGui import QPixmap
         produits = Database.get_all_products()
         
         col = 0
