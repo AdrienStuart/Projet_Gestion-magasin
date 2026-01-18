@@ -24,6 +24,7 @@ class StockTableScreen(QWidget):
         super().__init__()
         
         self.id_utilisateur = id_utilisateur
+        self.stock_complet = []  # Initialize to empty list to prevent AttributeError
         self.setup_ui()
         self.charger_donnees()
     

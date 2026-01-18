@@ -244,7 +244,7 @@ class MovementsScreen(QWidget):
         self.combo_produit.clear()
         for produit in produits:
             self.combo_produit.addItem(
-                f"{produit['nom']} (Stock: {produit['quantite_stock']})",
+                f"{produit['nom_produit']} (Stock: {produit['quantite_stock']})",
                 produit['id_produit']
             )
         
