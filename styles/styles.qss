@@ -1,0 +1,131 @@
+/* Global Defaults */
+QWidget {
+    background-color: #1E1E2E;
+    color: #FFFFFF;
+    font-family: "Roboto", "Open Sans", sans-serif;
+    font-size: 14pt;
+}
+
+/* Secondary Backgrounds (Cards, Sidebars) */
+QFrame, QDockWidget, QTabWidget::pane {
+    background-color: #2A2A40;
+    border: none;
+    border-radius: 8px;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #2A2A40;
+    color: #FFFFFF;
+    border: 1px solid #3E3E5E;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #3E3E5E;
+    border-color: #4E4E6E;
+}
+
+QPushButton:pressed {
+    background-color: #1A1A2E;
+}
+
+/* Primary Action Button (Validate/Pay) */
+QPushButton[class="primary"] {
+    background-color: #00C853;
+    color: #FFFFFF;
+    border: none;
+}
+QPushButton[class="primary"]:hover {
+    background-color: #00E676;
+}
+
+/* Alert/Danger Button */
+QPushButton[class="danger"] {
+    background-color: #FF3D00;
+    color: #FFFFFF;
+    border: none;
+}
+QPushButton[class="danger"]:hover {
+    background-color: #FF6E40;
+}
+
+/* Inputs & Search Bars */
+QLineEdit {
+    background-color: #2A2A40;
+    color: #FFFFFF;
+    border: 1px solid #3E3E5E;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 14pt;
+}
+
+QLineEdit:focus {
+    border: 1px solid #00C853;
+    background-color: #32324A;
+}
+
+/* Tables */
+QTableWidget, QTableView {
+    background-color: #2A2A40;
+    gridline-color: #3E3E5E;
+    selection-background-color: #3E3E5E;
+    selection-color: #FFFFFF;
+    border: none;
+}
+
+QHeaderView::section {
+    background-color: #1E1E2E;
+    color: #A0A0B0;
+    padding: 6px;
+    border: none;
+    font-weight: bold;
+}
+
+QTableCornerButton::section {
+    background-color: #1E1E2E;
+}
+
+/* Scrollbars */
+QScrollBar:vertical {
+    border: none;
+    background: #1E1E2E;
+    width: 10px;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:vertical {
+    background: #4E4E6E;
+    min-height: 20px;
+    border-radius: 5px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+/* Labels */
+QLabel {
+    color: #FFFFFF;
+}
+
+QLabel[class="secondary"] {
+    color: #A0A0B0;
+    font-size: 12pt;
+}
+
+QLabel[class="h1"] {
+    font-size: 24pt;
+    font-weight: bold;
+}
+
+QLabel[class="h2"] {
+    font-size: 18pt;
+    font-weight: bold;
+}
+
+/* Status Bar */
+QStatusBar {
+    background-color: #1E1E2E;
+    color: #A0A0B0;
+}

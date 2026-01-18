@@ -1,0 +1,100 @@
+
+/* === GLOBAL STYLES (Light Mode) === */
+* {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 12pt;
+    color: #1E1E2E; /* Primary Text */
+}
+
+QMainWindow, QWidget {
+    background-color: #F5F5F7; /* Light BG */
+}
+
+/* === NAVIGATION / SIDEBAR === */
+#Sidebar {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E0E0E0;
+}
+
+#Sidebar QPushButton {
+    color: #1E1E2E;
+    background-color: transparent;
+    border: none;
+    text-align: left;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#Sidebar QPushButton:hover {
+    background-color: #E0E0E0;
+}
+
+#Sidebar QPushButton:checked {
+    background-color: #00C853; /* Accent */
+    color: white;
+}
+
+/* === HEADER === */
+QFrame#Header {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E0E0E0;
+}
+
+/* === TABLES === */
+QTableView, QTableWidget {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    gridline-color: #F0F0F0;
+    selection-background-color: #00C853;
+}
+
+QHeaderView::section {
+    background-color: #F5F5F7;
+    padding: 5px;
+    border: 1px solid #E0E0E0;
+    font-weight: bold;
+}
+
+/* === INPUTS === */
+QLineEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 5px;
+    padding: 8px;
+    color: #1E1E2E;
+}
+
+QLineEdit:focus {
+    border: 1px solid #00C853;
+}
+
+/* === BUTTONS === */
+QPushButton.primary {
+    background-color: #00C853;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+QPushButton.primary:hover {
+    background-color: #00A344;
+}
+
+QPushButton.danger {
+    background-color: #FF3D00;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+/* === CARDS === */
+QFrame {
+    background-color: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 12px;
+}
+
+QLabel {
+    border: none;
+}

@@ -1,0 +1,115 @@
+Principe fondamental d’organisation :
+
+Le caissier doit toujours “retomber” sur l’écran de vente.
+
+L’écran de vente est :
+
+le point d’entrée,
+
+le point de sortie,
+
+le point de sécurité mentale.
+
+
+Organisation EXACTE
+A) Structure globale de l’écran
++------------------------------------------------+
+| Top bar : Caissier | Shift | Heure | Logout    |
++------------------------------------------------+
+| Sidebar (gauche)   | Zone principale           |
+|--------------------|---------------------------|
+| Nouvelle vente     |                           |
+| Historique         |   CONTENU VARIABLE        |
+| Mes statistiques   |                           |
+| Paramètres         |                           |
++--------------------+---------------------------+
+La sidebar est stable et rétractile, la zone centrale change.
+
+Écran par défaut : Nouvelle vente
+
+C’est l’écran principal.
+
++----------------------------------------------+
+| Recherche / Scan produit                     |
++----------------------------------------------+
+| Liste produits sélectionnés (panier)         |
+|----------------------------------------------|
+| Total | TVA | Remise | Moyen de paiement     |
+|----------------------------------------------|
+| Valider | Annuler | Mettre en attente        |
++----------------------------------------------+
+La disposition peut ajouter un troisième écran comme c'est fait actuellement 
+
+
+C) Saisie produit : double mode
+
+1) Mode rapide (par défaut)
+
+Champ texte toujours focus
+
+Scanner ou clavier
+
+Validation immédiate
+
+👉 C’est le mode principal, pas l’option.
+
+2) Mode visuel (secondaire)
+
+Bouton : “Catalogue”
+
+Grid scrollable par catégories
+
+Produits populaires en premier
+
+👉 Important :
+Ce mode doit être facultatif, sinon cela ralentit la caisse.
+
+D) Historique caissier (sobre, utile)
+
+Menu : Historique
+
+Contenu :
+
+Liste des tickets
+
+Filtres simples :
+
+Aujourd’hui
+
+Hier
+
+Ce mois
+
+Actions possibles :
+
+Voir détail
+
+Réimprimer reçu
+
+⚠️ Pas de graphiques ici.
+Table claire > graphes inutiles.
+
+E) “Mes statistiques” (très léger)
+
+Ici tu peux te permettre :
+
+Total encaissé aujourd’hui
+
+Nombre de tickets
+
+Panier moyen
+
+Optionnel :
+
+1 graphique max (barres par jour)
+
+7) Comment tu t’organises  pour coder
+
+Pour chaque écran, pose-toi UNE question :
+
+Est-ce que le caissier est en train de vendre ou de consulter ?
+
+S’il vend → aucune distraction
+
+S’il consulte → lecture claire, pas d’action dangereuse.
+
