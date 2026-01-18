@@ -304,7 +304,8 @@ class Database:
                     lv.QteVendue as qte_vendue,
                     lv.PrixUnitaireVendu as prix_unitaire,
                     lv.Remise as remise,
-                    (lv.QteVendue * lv.PrixUnitaireVendu * (1 - COALESCE(lv.Remise, 0) / 100)) as total_ligne
+                    COALESCE(lv.TauxTVA, p.TauxTVA, 18.00) as tauxtva,
+                    (lv.QteVendue * lv.PrixUnitaireVendu * (1 - COALESCE(lv.Remise, 0) / 100.0)) as total_ligne
                 FROM LigneVente lv
                 JOIN Produit p ON lv.Id_Produit = p.Id_Produit
                 WHERE lv.Id_Vente = %s
@@ -327,15 +328,24 @@ class Database:
             conn.close()
     
     @staticmethod
-    def get_cashier_stats(user_id):
-        """Récupère les statistiques du caissier pour aujourd'hui"""
+    def get_cashier_stats(user_id, period='today'):
+        """
+        Récupère les statistiques du caissier
+        period: 'today', 'week', 'month'
+        """
         conn = Database.get_connection()
         if not conn:
             return None
         
         cur = connection.get_cursor(conn)
         try:
-            cur.execute("""
+            date_filter = "AND DATE(v.DateVente) = CURRENT_DATE"
+            if period == 'week':
+                date_filter = "AND DATE_PART('week', v.DateVente) = DATE_PART('week', CURRENT_DATE)"
+            elif period == 'month':
+                date_filter = "AND DATE_TRUNC('month', v.DateVente) = DATE_TRUNC('month', CURRENT_DATE)"
+            
+            query = f"""
                 SELECT 
                     COALESCE(SUM(r.MontantTotal), 0) as total_encaisse,
                     COUNT(DISTINCT v.Id_Vente) as nb_tickets,
@@ -347,8 +357,10 @@ class Database:
                 FROM Vente v
                 LEFT JOIN Recu r ON v.Id_Vente = r.Id_Vente
                 WHERE v.Id_Utilisateur = %s
-                  AND DATE(v.DateVente) = CURRENT_DATE
-            """, (user_id,))
+                {date_filter}
+            """
+            
+            cur.execute(query, (user_id,))
             
             return cur.fetchone()
         except Exception as e:

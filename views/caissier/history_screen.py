@@ -202,20 +202,23 @@ class EcranHistorique(QWidget):
         layout_actions.addWidget(btn_details)
         
         # Réimprimer reçu
-        btn_reimprimer = QPushButton("🖨️ Réimprimer")
-        btn_reimprimer.setFixedHeight(50)
-        btn_reimprimer.setEnabled(False)  # Désactivé pour l'instant
-        btn_reimprimer.setStyleSheet("""
+        self.btn_reimprimer = QPushButton("🖨️ Réimprimer")
+        self.btn_reimprimer.setFixedHeight(50)
+        self.btn_reimprimer.setStyleSheet("""
             QPushButton {
-                background-color: #757575;
+                background-color: #607D8B;
                 color: white;
                 font-size: 14pt;
                 font-weight: bold;
                 border-radius: 8px;
                 padding: 0 30px;
             }
+            QPushButton:hover {
+                background-color: #78909C;
+            }
         """)
-        layout_actions.addWidget(btn_reimprimer)
+        self.btn_reimprimer.clicked.connect(self.reimprimer_recu)
+        layout_actions.addWidget(self.btn_reimprimer)
         
         parent_layout.addLayout(layout_actions)
     
@@ -315,3 +318,88 @@ class EcranHistorique(QWidget):
         msg.setIcon(QMessageBox.Information)
         msg.setStyleSheet("QLabel{min-width: 500px;}")
         msg.exec()
+    
+    def reimprimer_recu(self):
+        """Régénère et ouvre le reçu PDF pour la vente sélectionnée"""
+        row = self.table_historique.currentRow()
+        if row < 0:
+            QMessageBox.information(self, "Sélection requise",
+                                  "Veuillez sélectionner une vente à réimprimer.")
+            return
+        
+        id_vente = int(self.table_historique.item(row, 0).text())
+        
+        # Récupérer les détails complets (incluant TauxTVA ajouté récemment)
+        details = Database.get_sale_details(id_vente)
+        if not details:
+            QMessageBox.warning(self, "Erreur", "Impossible de récupérer les détails de la vente.")
+            return
+            
+        try:
+            from utils.receipt_generator import ReceiptGenerator
+            
+            # Reconstruction des totaux
+            subtotal_ttc = 0.0
+            total_remises = 0.0
+            total_ht = 0.0
+            montant_tva = 0.0
+            
+            articles_formatted = []
+            
+            for ligne in details['lignes']:
+                qte = ligne['qte_vendue']
+                prix_u = float(ligne['prix_unitaire'])
+                remise = float(ligne['remise'])
+                taux_tva = float(ligne['tauxtva']) if ligne['tauxtva'] is not None else 18.0
+                total_ligne_ttc = float(ligne['total_ligne'])
+                
+                # Calculs ligne à ligne (TTC -> HT)
+                prix_total_sans_remise = qte * prix_u
+                montant_remise_ligne = prix_total_sans_remise - total_ligne_ttc
+                
+                ht_ligne = total_ligne_ttc / (1 + taux_tva / 100.0)
+                tva_ligne = total_ligne_ttc - ht_ligne
+                
+                subtotal_ttc += prix_total_sans_remise
+                total_remises += montant_remise_ligne
+                total_ht += ht_ligne
+                montant_tva += tva_ligne
+                
+                articles_formatted.append({
+                    'nom_produit': ligne['nom_produit'],
+                    'quantite': qte,
+                    'prix_unitaire': prix_u,
+                    'remise': remise,
+                    'total_ligne': total_ligne_ttc
+                })
+            
+            totaux = {
+                'subtotal_ttc': round(subtotal_ttc, 2),
+                'total_remises': round(total_remises, 2),
+                'total_ht': round(total_ht, 2),
+                'montant_tva': round(montant_tva, 2),
+                'total_ttc': float(details['total_ttc'])
+            }
+            
+            vente_data = {
+                'id_vente': details['id_vente'],
+                'date_vente': details['date_vente'],
+                'caissier': "N/A",  # Nom non stocké dans l'historique brut, optionnel
+                'articles': articles_formatted
+            }
+            
+            # Générer
+            mode_paiement = details.get('mode_paiement', 'ESPECES')
+            pdf_path = ReceiptGenerator.generate_receipt(vente_data, totaux, mode_paiement)
+            
+            # Ouvrir
+            import subprocess
+            import sys
+            import os
+            if sys.platform.startswith('linux'):
+                subprocess.Popen(['xdg-open', pdf_path])
+            elif sys.platform == 'win32':
+                os.startfile(pdf_path)
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur Impression", f"Erreur lors de la génération du reçu:\n{str(e)}")

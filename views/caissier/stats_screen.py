@@ -6,7 +6,7 @@ Total encaissé / Nombre de tickets / Panier moyen
 """
 
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                               QFrame, QGridLayout)
+                               QFrame, QGridLayout, QPushButton, QButtonGroup)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 import qtawesome as qta
@@ -24,6 +24,7 @@ class EcranStatistiques(QWidget):
         super().__init__()
         
         self.id_utilisateur = id_utilisateur
+        self.filtre_actuel = 'today'  # 'today', 'week', 'month'
         
         self.setup_ui()
         self.charger_statistiques()
@@ -34,10 +35,8 @@ class EcranStatistiques(QWidget):
         layout_principal.setContentsMargins(20, 20, 20, 20)
         layout_principal.setSpacing(20)
         
-        # Titre
-        lbl_titre = QLabel("📊 MES STATISTIQUES")
-        lbl_titre.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2A2A40;")
-        layout_principal.addWidget(lbl_titre)
+        # En-tête avec filtres
+        self._creer_entete_filtres(layout_principal)
         
         # Grille de KPIs
         self._creer_grille_kpis(layout_principal)
@@ -46,11 +45,68 @@ class EcranStatistiques(QWidget):
         layout_principal.addStretch()
         
         # Note informative
-        lbl_info = QLabel("💡 Statistiques du jour en cours")
+        lbl_info = QLabel("💡 Ces chiffres reflètent l'activité de votre compte.")
         lbl_info.setStyleSheet("color: #757575; font-size: 10pt; font-style: italic;")
         lbl_info.setAlignment(Qt.AlignCenter)
         layout_principal.addWidget(lbl_info)
     
+    def _creer_entete_filtres(self, parent_layout):
+        """En-tête avec titre et boutons filtres"""
+        layout_entete = QHBoxLayout()
+        
+        # Titre
+        lbl_titre = QLabel("📊 MES STATISTIQUES")
+        lbl_titre.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2A2A40;")
+        layout_entete.addWidget(lbl_titre)
+        
+        layout_entete.addStretch()
+        
+        # Groupe de boutons filtres
+        self.groupe_filtres = QButtonGroup(self)
+        
+        # Aujourd'hui
+        self.btn_today = self._creer_btn_filtre("Aujourd'hui", "today", True)
+        self.groupe_filtres.addButton(self.btn_today)
+        layout_entete.addWidget(self.btn_today)
+        
+        # Cette semaine
+        self.btn_week = self._creer_btn_filtre("Cette Semaine", "week", False)
+        self.groupe_filtres.addButton(self.btn_week)
+        layout_entete.addWidget(self.btn_week)
+        
+        # Ce mois
+        self.btn_month = self._creer_btn_filtre("Ce Mois", "month", False)
+        self.groupe_filtres.addButton(self.btn_month)
+        layout_entete.addWidget(self.btn_month)
+        
+        parent_layout.addLayout(layout_entete)
+    
+    def _creer_btn_filtre(self, texte: str, filtre: str, checked: bool) -> QPushButton:
+        """Crée un bouton filtre"""
+        btn = QPushButton(texte)
+        btn.setCheckable(True)
+        btn.setChecked(checked)
+        btn.setFixedHeight(40)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: #E0E0E0;
+                color: #2A2A40;
+                font-size: 11pt;
+                font-weight: bold;
+                border-radius: 8px;
+                padding: 0 15px;
+            }
+            QPushButton:checked {
+                background-color: #2196F3;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #BBDEFB;
+            }
+        """)
+        btn.clicked.connect(lambda: self.changer_filtre(filtre))
+        return btn
+
     def _creer_grille_kpis(self, parent_layout):
         """Grille des 3 KPIs principaux"""
         grid = QGridLayout()
@@ -85,18 +141,19 @@ class EcranStatistiques(QWidget):
                 border-radius: 12px;
                 border-left: 5px solid {couleur};
                 padding: 20px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }}
         """)
-        carte.setMinimumHeight(150)
+        carte.setMinimumHeight(120)
         
         layout = QVBoxLayout(carte)
-        layout.setSpacing(10)
+        layout.setSpacing(5)
         
         # Icône + Titre
         layout_entete = QHBoxLayout()
         
         lbl_icone = QLabel(icone)
-        lbl_icone.setStyleSheet(f"font-size: 32pt; color: {couleur};")
+        lbl_icone.setStyleSheet(f"font-size: 24pt; color: {couleur};")
         layout_entete.addWidget(lbl_icone)
         
         lbl_titre = QLabel(titre)
@@ -108,7 +165,7 @@ class EcranStatistiques(QWidget):
         
         # Valeur (gros chiffre)
         lbl_valeur = QLabel(valeur)
-        lbl_valeur.setStyleSheet(f"font-size: 28pt; font-weight: bold; color: {couleur};")
+        lbl_valeur.setStyleSheet(f"font-size: 22pt; font-weight: bold; color: {couleur};")
         lbl_valeur.setAlignment(Qt.AlignRight)
         layout.addWidget(lbl_valeur)
         
@@ -119,11 +176,20 @@ class EcranStatistiques(QWidget):
     
     # ========== LOGIQUE ==========
     
+    def changer_filtre(self, filtre: str):
+        """Change le filtre et recharge les données"""
+        self.filtre_actuel = filtre
+        self.charger_statistiques()
+
     def charger_statistiques(self):
         """Charge et affiche les statistiques du caissier"""
-        stats = Database.get_cashier_stats(self.id_utilisateur)
+        stats = Database.get_cashier_stats(self.id_utilisateur, self.filtre_actuel)
         
         if not stats:
+            # En cas d'erreur ou vide, on met à 0
+            self.carte_total.lbl_valeur.setText(f"0 FCFA")
+            self.carte_tickets.lbl_valeur.setText("0")
+            self.carte_panier_moyen.lbl_valeur.setText(f"0 FCFA")
             return
         
         # Mettre à jour les KPIs
