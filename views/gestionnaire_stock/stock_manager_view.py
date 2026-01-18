@@ -34,7 +34,7 @@ class StockManagerView(QWidget):
         super().__init__()
         
         self.setWindowTitle("Gestionnaire de Stock")
-        # self.resize(1280, 800) # Géré par le parent
+        self.resize(1280, 800) # Taille par défaut
         
         self.id_utilisateur = id_utilisateur
         self.nom_utilisateur = nom_utilisateur
@@ -42,6 +42,9 @@ class StockManagerView(QWidget):
         
         self.setup_ui()
         self.afficher_tableau_stock()
+        
+        # Mode plein écran (Demandé explicitement)
+        self.showMaximized()
     
     def setup_ui(self):
         """Construction de l'interface principale"""
@@ -71,7 +74,7 @@ class StockManagerView(QWidget):
     def _creer_sidebar(self, parent_layout):
         """Crée la sidebar de navigation"""
         self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(260)
+        self.sidebar.setFixedWidth(220) # Taille Caisse
         self.sidebar.setStyleSheet("""
             QFrame {
                 background-color: #2A2A40;
@@ -80,19 +83,19 @@ class StockManagerView(QWidget):
         """)
         
         layout_sidebar = QVBoxLayout(self.sidebar)
-        layout_sidebar.setContentsMargins(15, 25, 15, 25)
-        layout_sidebar.setSpacing(15)
+        layout_sidebar.setContentsMargins(10, 20, 10, 20) # Marges Caisse
+        layout_sidebar.setSpacing(10) # Espacement Caisse
         
         # Titre module
-        lbl_module = QLabel("📦 STOCK PRO")
-        lbl_module.setStyleSheet("color: #00C853; font-size: 18pt; font-weight: bold; padding: 10px;")
+        lbl_module = QLabel("📦 STOCK")
+        lbl_module.setStyleSheet("color: #00C853; font-size: 16pt; font-weight: bold; margin-bottom: 20px;")
         lbl_module.setAlignment(Qt.AlignCenter)
         layout_sidebar.addWidget(lbl_module)
         
         layout_sidebar.addSpacing(30)
         
         # Boutons navigation
-        self.btn_stock = self._creer_btn_sidebar("📋", "Tableau de Stock", True)
+        self.btn_stock = self._creer_btn_sidebar("📋", "Stock", True)
         self.btn_stock.clicked.connect(self.afficher_tableau_stock)
         layout_sidebar.addWidget(self.btn_stock)
         
@@ -100,7 +103,7 @@ class StockManagerView(QWidget):
         self.btn_mouvements.clicked.connect(self.afficher_mouvements)
         layout_sidebar.addWidget(self.btn_mouvements)
         
-        self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes & Ruptures", False)
+        self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes", False)
         self.btn_alertes.clicked.connect(self.afficher_alertes)
         layout_sidebar.addWidget(self.btn_alertes)
         
@@ -112,7 +115,7 @@ class StockManagerView(QWidget):
         
         # Info utilisateur
         lbl_user = QLabel(f"👤 {self.nom_utilisateur}")
-        lbl_user.setStyleSheet("color: #757575; font-size: 11pt; font-weight: bold; padding: 10px;")
+        lbl_user.setStyleSheet("color: #757575; font-size: 10pt; font-weight: bold;")
         lbl_user.setAlignment(Qt.AlignCenter)
         layout_sidebar.addWidget(lbl_user)
 
@@ -142,16 +145,16 @@ class StockManagerView(QWidget):
         btn = QPushButton(f"{icone}  {texte}")
         btn.setCheckable(True)
         btn.setChecked(actif)
-        btn.setFixedHeight(60)
+        btn.setFixedHeight(50) # Hauteur Caisse
         
         style_base = """
             QPushButton {
                 background-color: transparent;
                 color: #B0B0C0;
-                font-size: 14pt;
+                font-size: 12pt; /* Police Caisse */
                 font-weight: bold;
                 border-radius: 10px;
-                padding-left: 20px;
+                padding-left: 15px; /* Padding Caisse */
                 text-align: left;
             }
             QPushButton:checked {
