@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                                QTextEdit, QPushButton, QHeaderView, QAbstractItemView,
                                QFrame, QMessageBox, QGroupBox)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor
 from datetime import datetime
 
 from db.database import Database
@@ -287,7 +287,10 @@ class MovementsScreen(QWidget):
                 couleur = "#FF9800"
             
             item_type = QTableWidgetItem(type_text)
-            item_type.setForeground(QFont().setWeight(QFont.Bold))
+            item_type.setForeground(QColor(couleur))
+            font = QFont()
+            font.setBold(True)
+            item_type.setFont(font)
             self.table_historique.setItem(row, 2, item_type)
             
             # Quantité
