@@ -49,18 +49,20 @@ class AlertsScreen(QWidget):
             QGroupBox {
                 font-size: 13pt;
                 font-weight: bold;
-                color: #F44336;
-                border: 3px solid #F44336;
+                color: #D32F2F;
+                border: 2px solid #EF9A9A;
                 border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 15px;
-                background-color: #FFEBEE;
+                margin-top: 15px;
+                padding-top: 25px;
+                background-color: #FAFAFA;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 15px;
-                padding: 0 5px;
-                background-color: white;
+                padding: 0 8px;
+                background-color: #FFEBEE;
+                border: 1px solid #EF9A9A;
+                border-radius: 4px;
             }
         """)
         
@@ -89,26 +91,26 @@ class AlertsScreen(QWidget):
         
         self.table_ruptures.setStyleSheet("""
             QTableWidget {
-                font-size: 13pt; /* Police plus grande */
+                font-size: 13pt;
                 background-color: white;
-                gridline-color: #E0E0E0;
+                gridline-color: #F5F5F5;
                 border: 1px solid #E0E0E0;
+                border-radius: 4px;
             }
             QTableWidget::item {
-                padding: 5px 10px;
+                padding: 8px 10px;
             }
             QTableWidget::item:selected {
                 background-color: #FFEBEE;
-                color: #C62828;
+                color: #D32F2F;
             }
             QHeaderView::section {
-                background-color: #FFEBEE;
-                color: #C62828;
-                padding: 10px;
+                background-color: #2A2A40;
+                color: white;
+                padding: 12px;
                 font-size: 11pt;
                 font-weight: bold;
                 border: none;
-                border-bottom: 2px solid #EF9A9A;
             }
         """)
         
@@ -123,18 +125,20 @@ class AlertsScreen(QWidget):
             QGroupBox {
                 font-size: 13pt;
                 font-weight: bold;
-                color: #FF9800;
-                border: 3px solid #FF9800;
+                color: #E65100;
+                border: 2px solid #FFCC80;
                 border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 15px;
-                background-color: #FFF3E0;
+                margin-top: 15px;
+                padding-top: 25px;
+                background-color: #FAFAFA;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 15px;
-                padding: 0 5px;
-                background-color: white;
+                padding: 0 8px;
+                background-color: #FFF3E0;
+                border: 1px solid #FFCC80;
+                border-radius: 4px;
             }
         """)
         
@@ -162,26 +166,26 @@ class AlertsScreen(QWidget):
         
         self.table_critique.setStyleSheet("""
             QTableWidget {
-                font-size: 13pt; /* Police plus grande */
+                font-size: 13pt;
                 background-color: white;
-                gridline-color: #E0E0E0;
+                gridline-color: #F5F5F5;
                 border: 1px solid #E0E0E0;
+                border-radius: 4px;
             }
             QTableWidget::item {
-                padding: 5px 10px;
+                padding: 8px 10px;
             }
             QTableWidget::item:selected {
                 background-color: #FFF3E0;
-                color: #EF6C00;
+                color: #E65100;
             }
             QHeaderView::section {
-                background-color: #FFF3E0;
-                color: #EF6C00;
-                padding: 10px;
+                background-color: #2A2A40;
+                color: white;
+                padding: 12px;
                 font-size: 11pt;
                 font-weight: bold;
                 border: none;
-                border-bottom: 2px solid #FFB74D;
             }
         """)
         
@@ -242,10 +246,12 @@ class AlertsScreen(QWidget):
             # Message si aucune rupture
             row = self.table_ruptures.rowCount()
             self.table_ruptures.insertRow(row)
-            item = QTableWidgetItem("✅ Aucun produit en rupture")
+            item = QTableWidgetItem("✨ Félicitations ! Aucun produit n'est en rupture totale.")
+            item.setTextAlignment(Qt.AlignCenter)
             item.setForeground(QColor("#00C853"))
             font = QFont()
             font.setBold(True)
+            font.setPointSize(12)
             item.setFont(font)
             self.table_ruptures.setItem(row, 0, item)
             self.table_ruptures.setSpan(row, 0, 1, 4)
@@ -255,8 +261,13 @@ class AlertsScreen(QWidget):
             row = self.table_ruptures.rowCount()
             self.table_ruptures.insertRow(row)
             
-            # Produit
-            self.table_ruptures.setItem(row, 0, QTableWidgetItem(produit['nom']))
+            # Produit (Gars, 14pt)
+            item_nom = QTableWidgetItem(produit['nom'])
+            font_nom = QFont()
+            font_nom.setBold(True)
+            font_nom.setPointSize(14)
+            item_nom.setFont(font_nom)
+            self.table_ruptures.setItem(row, 0, item_nom)
             
             # Catégorie
             self.table_ruptures.setItem(row, 1, QTableWidgetItem(produit.get('categorie', 'N/A')))
@@ -269,11 +280,12 @@ class AlertsScreen(QWidget):
             
             # Jours en rupture (estimation)
             jours = produit.get('jours_rupture', 0) or 0
-            item_jours = QTableWidgetItem(f"{jours} jours" if jours else "Récent")
+            item_jours = QTableWidgetItem(f"🔴 {jours} jours" if jours else "🔴 Récent")
             item_jours.setTextAlignment(Qt.AlignCenter)
-            font = QFont()
-            font.setBold(True)
-            item_jours.setFont(font)
+            item_jours.setForeground(QColor("#D32F2F"))
+            font_jours = QFont()
+            font_jours.setBold(True)
+            item_jours.setFont(font_jours)
             self.table_ruptures.setItem(row, 3, item_jours)
     
     def afficher_critiques(self, critiques):
@@ -284,10 +296,12 @@ class AlertsScreen(QWidget):
             # Message si tout va bien
             row = self.table_critique.rowCount()
             self.table_critique.insertRow(row)
-            item = QTableWidgetItem("✅ Tous les stocks sont au-dessus du seuil")
+            item = QTableWidgetItem("✅ Tout est sous contrôle : aucun stock critique détecté.")
+            item.setTextAlignment(Qt.AlignCenter)
             item.setForeground(QColor("#00C853"))
             font = QFont()
             font.setBold(True)
+            font.setPointSize(12)
             item.setFont(font)
             self.table_critique.setItem(row, 0, item)
             self.table_critique.setSpan(row, 0, 1, 5)
@@ -297,19 +311,25 @@ class AlertsScreen(QWidget):
             row = self.table_critique.rowCount()
             self.table_critique.insertRow(row)
             
-            # Produit
-            self.table_critique.setItem(row, 0, QTableWidgetItem(produit['nom']))
+            # Produit (Gras, 14pt)
+            item_nom = QTableWidgetItem(produit['nom'])
+            font_nom = QFont()
+            font_nom.setBold(True)
+            font_nom.setPointSize(14)
+            item_nom.setFont(font_nom)
+            self.table_critique.setItem(row, 0, item_nom)
             
             # Catégorie
             self.table_critique.setItem(row, 1, QTableWidgetItem(produit.get('categorie', 'N/A')))
             
             # Stock actuel
             stock = produit.get('stockactuel', 0)
-            item_stock = QTableWidgetItem(str(stock))
+            item_stock = QTableWidgetItem(f"⚠️ {stock}")
             item_stock.setTextAlignment(Qt.AlignCenter)
-            font = QFont()
-            font.setBold(True)
-            item_stock.setFont(font)
+            item_stock.setForeground(QColor("#E65100"))
+            font_stock = QFont()
+            font_stock.setBold(True)
+            item_stock.setFont(font_stock)
             self.table_critique.setItem(row, 2, item_stock)
             
             # Seuil
@@ -320,10 +340,10 @@ class AlertsScreen(QWidget):
             
             # Manquant
             manquant = max(0, seuil - stock)
-            item_manquant = QTableWidgetItem(f"≈ {manquant}")
+            item_manquant = QTableWidgetItem(f"⬇️ {manquant}")
             item_manquant.setTextAlignment(Qt.AlignCenter)
-            item_manquant.setForeground(QColor("#F44336"))
-            item_manquant.setFont(font)
+            item_manquant.setForeground(QColor("#D32F2F"))
+            item_manquant.setFont(font_stock)
             self.table_critique.setItem(row, 4, item_manquant)
     
     def generer_liste_reappro(self):
