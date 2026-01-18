@@ -588,6 +588,40 @@ class Database:
         finally:
             cur.close()
             conn.close()
+
+    @staticmethod
+    def get_stock_history_daily(period_days=7):
+        """Récupère l'historique journalier des entrées/sorties pour les graphiques"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                WITH dates AS (
+                    SELECT generate_series(
+                        CURRENT_DATE - INTERVAL '%s days', 
+                        CURRENT_DATE, 
+                        '1 day'::interval
+                    )::date as jour
+                )
+                SELECT 
+                    d.jour,
+                    COALESCE(SUM(CASE WHEN m.Type = 'ENTREE' THEN m.Quantite ELSE 0 END), 0) as entrees,
+                    COALESCE(SUM(CASE WHEN m.Type = 'SORTIE' THEN m.Quantite ELSE 0 END), 0) as sorties
+                FROM dates d
+                LEFT JOIN MouvementStock m ON DATE(m.DateMouvement) = d.jour
+                GROUP BY d.jour
+                ORDER BY d.jour ASC
+            """, (period_days,))
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_stock_history_daily: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
     
     @staticmethod
     def get_all_categories():
