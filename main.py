@@ -42,17 +42,26 @@ class AppController:
 
     def show_main_window(self, user):
         from views.caissier.cashier_view import CashierView
+        from views.gestionnaire_stock.stock_manager_view import StockManagerView
         
-        # Pour les caissiers, utiliser directement CashierView (pas de sidebar dupliquée)
+        # Pour les caissiers
         if user['role'] == 'Caissier':
             self.main_window = CashierView(
                 id_utilisateur=user.get('id_utilisateur', 1),
                 nom_utilisateur=user['nom']
             )
-            # Donner accès au controller pour le logout
             self.main_window.controller = self
+            
+        # Pour les gestionnaires de stock
+        elif user['role'] == 'Gestionnaire':
+            self.main_window = StockManagerView(
+                id_utilisateur=user.get('id_utilisateur', 1),
+                nom_utilisateur=user['nom']
+            )
+            self.main_window.controller = self
+            
         else:
-            # Pour les autres rôles, utiliser MainWindow avec sidebar
+            # Pour Admin / Responsable Achats -> MainWindow
             self.main_window = MainWindow(
                 user_role=user['role'], 
                 user_name=user['nom'], 

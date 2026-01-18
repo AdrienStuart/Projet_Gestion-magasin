@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Import Views
 from views.caissier.cashier_view import CashierView
-from views.gestionnaire_stock.stock_view import StockView
+from views.gestionnaire_stock.stock_manager_view import StockManagerView
 from views.gestionnaire_achat.purchase_view import PurchaseView
 from views.admin.admin_view import AdminView
 
@@ -167,7 +167,8 @@ class MainWindow(QMainWindow):
         self.views.append(self.cashier_view)
         
         # 2. Stock
-        self.stock_view = StockView()
+        # Pass user_name from MainWindow
+        self.stock_view = StockManagerView(nom_utilisateur=self.user_name)
         self.stacked_widget.addWidget(self.stock_view)
         self.views.append(self.stock_view)
         

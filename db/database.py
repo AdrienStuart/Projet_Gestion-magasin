@@ -370,4 +370,244 @@ class Database:
             cur.close()
             conn.close()
 
+    # ================= STOCK MANAGER SPECIFIC =================
+    
+    @staticmethod
+    def get_stock_overview():
+        """Récupère la vue d'ensemble du stock avec statuts"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT 
+                    p.Id_Produit as id_produit,
+                    p.Nom as nom,
+                    c.Libelle as categorie,
+                    p.Id_Categorie as id_categorie,
+                    p.StockActuel as stockactuel,
+                    p.StockAlerte as stockalerte,
+                    CASE 
+                        WHEN p.StockActuel = 0 THEN 'RUPTURE'
+                        WHEN p.StockActuel <= p.StockAlerte THEN 'CRITIQUE'
+                        ELSE 'OK'
+                    END as statut
+                FROM Produit p
+                JOIN Categorie c ON p.Id_Categorie = c.Id_Categorie
+                ORDER BY p.Nom
+            """)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_stock_overview: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def get_stock_movements(filters=None):
+        """Récupère l'historique des mouvements de stock"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            # Base query
+            query = """
+                SELECT 
+                    m.DateMouvement as datemouvement,
+                    p.Nom as nom_produit,
+                    m.Type as type,
+                    m.Quantite as quantite,
+                    u.Nom as nom_utilisateur,
+                    m.Commentaire as commentaire
+                FROM MouvementStock m
+                JOIN Produit p ON m.Id_Produit = p.Id_Produit
+                JOIN Utilisateur u ON m.Id_Utilisateur = u.Id_Utilisateur
+                ORDER BY m.DateMouvement DESC
+                LIMIT 100
+            """
+            
+            cur.execute(query)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_stock_movements: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def create_stock_movement(product_id, type, quantity, user_id, comment=""):
+        """Crée un mouvement de stock (ENTREE/SORTIE)"""
+        conn = Database.get_connection()
+        if not conn:
+            return False, "Erreur de connexion"
+        
+        cur = connection.get_cursor(conn)
+        try:
+            # Validation du type
+            if type not in ['ENTREE', 'SORTIE', 'AJUSTEMENT']:
+                return False, "Type de mouvement invalide"
+            
+            # Insérer le mouvement
+            cur.execute("""
+                INSERT INTO MouvementStock (Type, Quantite, Id_Produit, Id_Utilisateur, Commentaire)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING Id_Mouvement
+            """, (type, quantity, product_id, user_id, comment))
+            
+            mvt_id = cur.fetchone()['id_mouvement']
+            
+            # Mettre à jour le stock
+            if type == 'ENTREE':
+                cur.execute("""
+                    UPDATE Produit 
+                    SET StockActuel = StockActuel + %s
+                    WHERE Id_Produit = %s
+                """, (quantity, product_id))
+            elif type == 'SORTIE':
+                # Vérifier qu'il y a assez de stock
+                cur.execute("SELECT StockActuel FROM Produit WHERE Id_Produit = %s", (product_id,))
+                stock_actuel = cur.fetchone()['stockactuel']
+                
+                if stock_actuel < quantity:
+                    conn.rollback()
+                    return False, f"Stock insuffisant (actuel: {stock_actuel})"
+                
+                cur.execute("""
+                    UPDATE Produit 
+                    SET StockActuel = StockActuel - %s
+                    WHERE Id_Produit = %s
+                """, (quantity, product_id))
+            
+            conn.commit()
+            return True, mvt_id
+            
+        except Exception as e:
+            conn.rollback()
+            print(f"Erreur create_stock_movement: {e}")
+            return False, str(e)
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def get_stock_alerts():
+        """Récupère les alertes de stock (ruptures + critiques)"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT 
+                    p.Id_Produit as id_produit,
+                    p.Nom as nom,
+                    c.Libelle as categorie,
+                    p.StockActuel as stockactuel,
+                    p.StockAlerte as stockalerte,
+                    COALESCE(
+                        EXTRACT(DAY FROM CURRENT_DATE - MAX(m.DateMouvement)),
+                        0
+                    ) as jours_rupture
+                FROM Produit p
+                JOIN Categorie c ON p.Id_Categorie = c.Id_Categorie
+                LEFT JOIN MouvementStock m ON p.Id_Produit = m.Id_Produit AND m.Type = 'ENTREE'
+                WHERE p.StockActuel <= p.StockAlerte
+                GROUP BY p.Id_Produit, p.Nom, c.Libelle, p.StockActuel, p.StockAlerte
+                ORDER BY p.StockActuel ASC, p.Nom
+            """)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_stock_alerts: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def get_products_to_restock():
+        """Liste intelligente des produits à réapprovisionner"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT 
+                    p.Id_Produit as id_produit,
+                    p.Nom as nom,
+                    c.Libelle as categorie,
+                    p.StockActuel as stockactuel,
+                    p.StockAlerte as stockalerte,
+                    (p.StockAlerte * 2 - p.StockActuel) as qte_suggere
+                FROM Produit p
+                JOIN Categorie c ON p.Id_Categorie = c.Id_Categorie
+                WHERE p.StockActuel <= p.StockAlerte
+                ORDER BY 
+                    CASE WHEN p.StockActuel = 0 THEN 0 ELSE 1 END,
+                    p.StockActuel ASC
+            """)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_products_to_restock: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def get_stock_stats(period_days=30):
+        """Récupère les statistiques de stock pour une période"""
+        conn = Database.get_connection()
+        if not conn:
+            return None
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT 
+                    SUM(CASE WHEN Type = 'ENTREE' THEN Quantite ELSE 0 END) as total_entrees,
+                    SUM(CASE WHEN Type = 'SORTIE' THEN Quantite ELSE 0 END) as total_sorties,
+                    COUNT(*) as total_mouvements,
+                    (SELECT COUNT(*) FROM Produit WHERE StockActuel > 0) as produits_actifs
+                FROM MouvementStock
+                WHERE DateMouvement >= CURRENT_DATE - INTERVAL '%s days'
+            """, (period_days,))
+            
+            return cur.fetchone()
+        except Exception as e:
+            print(f"Erreur get_stock_stats: {e}")
+            return None
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def get_all_categories():
+        """Récupère toutes les catégories"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT Id_Categorie as id_categorie, Libelle as libelle
+                FROM Categorie
+                ORDER BY Libelle
+            """)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_all_categories: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
 

@@ -1,0 +1,197 @@
+Le gestionnaire de stock est responsable de la disponibilité, du suivi et de la cohérence des produits en magasin.
+Son objectif est d’éviter les ruptures, limiter le surstock et garantir l’exactitude des quantités enregistrées.
+
+
+CE QUE LE GESTIONNAIRE DE STOCK FAIT (ET NE FAIT PAS)
+✅ Il FAIT
+
+Consulter l’état du stock
+
+Mettre à jour les quantités
+
+Gérer les entrées de stock (livraisons)
+
+Gérer les sorties non commerciales (casse, perte)
+
+Identifier les produits en rupture / seuil critique
+
+Consulter l’historique des mouvements de stock
+
+❌ Il NE FAIT PAS
+
+Vendre
+
+Encaisser
+
+Modifier les règles fiscales
+
+Accéder aux stats financières globales
+
+Gérer les utilisateurs
+
+👉 Il manipule des quantités, pas de l’argent.
+
+
+Le gestionnaire de stock pense en “produits” et en “quantités”, pas en tickets ni en clients.
+
+Donc :
+
+listes
+
+tableaux
+
+filtres
+
+alertes
+
+Pas de cartes “jolies” inutiles.
+
+
+ORGANISATION GLOBALE DE L’INTERFACE
+Structure écran (cohérente avec le caissier)
+
++------------------------------------------------+
+| Top bar : Gestionnaire Stock | Date | Logout   |
++------------------------------------------------+
+| Sidebar (gauche)   | Zone principale           |
+|--------------------|---------------------------|
+| Tableau de stock   |                           |
+| Mouvements         |   CONTENU VARIABLE        |
+| Alertes            |                           |
+| Statistiques       |                           |
+| Paramètres         |                           |
++--------------------+---------------------------+
+
+ÉCRAN PRINCIPAL — TABLEAU DE STOCK (OBLIGATOIRE)
+
+C’est l’écran par défaut.
+
+Contenu
+
+Table claire, dense mais lisible :
+
+Produit	Catégorie	Stock	Seuil	Statut
+Riz 5kg	Alimentaire	12	5	OK
+Huile	Alimentaire	2	10	⚠️
+Sucre	Alimentaire	0	5	❌
+
+
+Règles UX importantes
+
+Couleurs sémantiques , pas décoratives ( respecte la logique dans laquelle nous évoluons )
+
+Filtres :
+
+catégorie
+
+stock critique
+
+Recherche texte rapide
+
+👉 Tout doit être exploitable sans clic inutile.
+
+6) GESTION DES MOUVEMENTS (CŒUR MÉTIER)
+
+Menu : Mouvements
+
+Ici, le gestionnaire :
+
+enregistre une entrée (livraison)
+
+enregistre une sortie (casse, perte, ajustement)
+
+Formulaire SIMPLE
+
+Produit
+
+Type de mouvement (entrée / sortie)
+
+Quantité
+
+Motif (optionnel mais recommandé)
+
+Date auto
+
+⚠️ Règle clé :
+
+Aucune modification directe du stock sans trace.
+
+ALERTES STOCK (INTELLIGENT, PAS GADGET)
+
+Menu : Alertes
+
+Contenu :
+
+Produits sous seuil
+
+Produits en rupture
+
+Pas de graphiques.
+Pas de KPI marketing.
+
+👉 Juste :
+
+quoi manque
+
+combien
+
+depuis quand
+
+Option “Marquer comme traité” (UX mature).
+
+8) STATISTIQUES STOCK (LÀ, TU PEUX METTRE DES GRAPHES)
+
+Ici, oui, les graphiques sont légitimes.
+
+Indicateurs pertinents
+
+Évolution du stock par produit
+
+Entrées vs sorties (par période)
+
+Produits les plus souvent en rupture
+
+Graphiques recommandés
+
+Histogrammes
+
+Courbes simples
+
+👉 Pas plus de 2–3 graphiques par écran.
+
+CE QUI REND LE MODULE STOCK “WOW” (SANS SURDESIGN)
+🔹 1. Seuils personnalisables
+
+Chaque produit a :
+
+un seuil d’alerte
+
+un statut visuel automatique
+
+🔹 2. Traçabilité totale
+
+Historique des mouvements avec :
+
+utilisateur
+
+date
+
+motif
+
+🔹 3. Préparation à l’achat
+
+Bouton :
+
+“Produits à réapprovisionner”
+
+Sans acheter.
+Juste une liste intelligente.
+
+Ça prépare parfaitement le rôle suivant (responsable d’achats).
+
+11) ERREURS QUI TUERAIENT CE MODULE
+
+❌ Modifier directement la quantité sans mouvement
+❌ Ajouter des graphes financiers
+❌ Laisser le gestionnaire encaisser
+❌ Transformer cet écran en dashboard marketing
