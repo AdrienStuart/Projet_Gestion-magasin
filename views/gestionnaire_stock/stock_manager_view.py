@@ -42,6 +42,9 @@ class StockManagerView(QMainWindow):
         
         self.setup_ui()
         self.afficher_tableau_stock()
+        
+        # Mode plein écran par défaut
+        self.showMaximized()
     
     def setup_ui(self):
         """Construction de l'interface principale"""
@@ -190,6 +193,11 @@ class StockManagerView(QMainWindow):
         layout_top.addWidget(self.lbl_titre_ecran)
         
         layout_top.addStretch()
+        
+        # Shift Info (Style Caisse)
+        lbl_shift = QLabel("📅 Session Gestionnaire")
+        lbl_shift.setStyleSheet("color: #A0A0B0; font-size: 10pt; margin-right: 20px; font-weight: bold;")
+        layout_top.addWidget(lbl_shift)
         
         # Date/Heure (Blanc)
         from datetime import datetime
