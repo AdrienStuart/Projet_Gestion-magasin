@@ -42,12 +42,10 @@ class StockManagerView(QMainWindow):
         
         self.setup_ui()
         self.afficher_tableau_stock()
-        
-        # Mode plein écran par défaut
-        self.showMaximized()
     
     def setup_ui(self):
         """Construction de l'interface principale"""
+        # Widget central pour QMainWindow
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         

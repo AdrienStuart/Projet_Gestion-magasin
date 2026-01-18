@@ -74,35 +74,41 @@ class AlertsScreen(QWidget):
         ])
         
         # Configuration
+        # Configuration
         header = self.table_ruptures.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Produit
+        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Produit (Stretch naturel)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Catégorie
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Seuil
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Jours
         
         self.table_ruptures.verticalHeader().setVisible(False)
-        self.table_ruptures.verticalHeader().setDefaultSectionSize(40)
+        self.table_ruptures.verticalHeader().setDefaultSectionSize(50) # Hauteur augmentée
         self.table_ruptures.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_ruptures.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table_ruptures.setMaximumHeight(250)
+        self.table_ruptures.setMaximumHeight(300) # Un peu plus haut
         
         self.table_ruptures.setStyleSheet("""
             QTableWidget {
-                font-size: 11pt;
+                font-size: 13pt; /* Police plus grande */
                 background-color: white;
                 gridline-color: #E0E0E0;
                 border: 1px solid #E0E0E0;
             }
+            QTableWidget::item {
+                padding: 5px 10px;
+            }
             QTableWidget::item:selected {
-                background-color: #F44336;
-                color: white;
+                background-color: #FFEBEE;
+                color: #C62828;
             }
             QHeaderView::section {
-                background-color: #C62828;
-                color: white;
+                background-color: #FFEBEE;
+                color: #C62828;
                 padding: 10px;
-                font-size: 10pt;
+                font-size: 11pt;
                 font-weight: bold;
+                border: none;
+                border-bottom: 2px solid #EF9A9A;
             }
         """)
         
@@ -143,34 +149,39 @@ class AlertsScreen(QWidget):
         
         # Configuration
         header = self.table_critique.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Produit
+        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Produit (Natural stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Catégorie
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Stock
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Seuil
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Manquant
         
         self.table_critique.verticalHeader().setVisible(False)
-        self.table_critique.verticalHeader().setDefaultSectionSize(40)
+        self.table_critique.verticalHeader().setDefaultSectionSize(50) # Hauteur augmentée
         self.table_critique.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_critique.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
         self.table_critique.setStyleSheet("""
             QTableWidget {
-                font-size: 11pt;
+                font-size: 13pt; /* Police plus grande */
                 background-color: white;
                 gridline-color: #E0E0E0;
                 border: 1px solid #E0E0E0;
             }
+            QTableWidget::item {
+                padding: 5px 10px;
+            }
             QTableWidget::item:selected {
-                background-color: #FF9800;
-                color: white;
+                background-color: #FFF3E0;
+                color: #EF6C00;
             }
             QHeaderView::section {
-                background-color: #F57C00;
-                color: white;
+                background-color: #FFF3E0;
+                color: #EF6C00;
                 padding: 10px;
-                font-size: 10pt;
+                font-size: 11pt;
                 font-weight: bold;
+                border: none;
+                border-bottom: 2px solid #FFB74D;
             }
         """)
         

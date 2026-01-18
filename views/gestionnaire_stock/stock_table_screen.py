@@ -48,7 +48,7 @@ class StockTableScreen(QWidget):
         frame_filtres = QFrame()
         frame_filtres.setStyleSheet("""
             QFrame {
-                background-color: white;
+                background-color: #2A2A40;
                 border-radius: 8px;
                 padding: 10px;
             }
@@ -58,22 +58,26 @@ class StockTableScreen(QWidget):
         
         # Recherche texte
         lbl_recherche = QLabel("🔍 Recherche:")
+        lbl_recherche.setStyleSheet("color: white; font-weight: bold;")
         lbl_recherche.setStyleSheet("font-size: 11pt; font-weight: bold;")
         layout_filtres.addWidget(lbl_recherche)
         
         self.input_recherche = QLineEdit()
         self.input_recherche.setPlaceholderText("Nom du produit...")
-        self.input_recherche.setFixedWidth(250)
-        self.input_recherche.textChanged.connect(self.appliquer_filtres)
+        self.input_recherche.setFixedWidth(300)
+        self.input_recherche.setFixedHeight(35)
         self.input_recherche.setStyleSheet("""
             QLineEdit {
-                padding: 8px;
-                border: 2px solid #E0E0E0;
-                border-radius: 6px;
+                border: 2px solid #5E5E7E;
+                border-radius: 5px;
+                padding: 5px;
                 font-size: 11pt;
+                background-color: #3E3E5E;
+                color: white;
             }
             QLineEdit:focus {
-                border-color: #00C853;
+                border: 2px solid #00C853;
+                background-color: #4E4E6E;
             }
         """)
         layout_filtres.addWidget(self.input_recherche)
