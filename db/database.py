@@ -8,6 +8,8 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
+from datetime import datetime
+
 from db import models
 from db import connection
 
@@ -718,6 +720,195 @@ class Database:
             return cur.fetchall()
         except Exception as e:
             print(f"Erreur get_all_categories: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+
+    # =========================================================================
+    # MODULE RESPONSABLE ACHATS
+    # =========================================================================
+
+    @staticmethod
+    def get_purchasing_dashboard_stats():
+        """Récupère les KPIs pour le dashboard Achats"""
+        conn = Database.get_connection()
+        if not conn: return None
+        cur = connection.get_cursor(conn)
+        try:
+            stats = {}
+            
+            # 1. Compteurs Alertes
+            cur.execute("""
+                SELECT
+                    COUNT(*) FILTER (WHERE Statut IN ('NON_LUE', 'VU', 'EN_COURS')) as total_active,
+                    COUNT(*) FILTER (WHERE Statut IN ('NON_LUE', 'VU', 'EN_COURS') AND Priorite = 'CRITICAL') as critical,
+                    COUNT(*) FILTER (WHERE Statut IN ('NON_LUE', 'VU', 'EN_COURS') AND Priorite = 'HIGH') as high
+                FROM AlerteStock
+            """)
+            res = cur.fetchone()
+            stats.update(res)
+
+            # 2. Valeur estimée du réapprovisionnement nécessaire
+            # (Seuil - StockActuel) * DernierPrixAchat
+            cur.execute("""
+                SELECT COALESCE(SUM((a.Seuil_Alerte_Vise - p.StockActuel) * p.DernierPrixAchat), 0) as value_needed
+                FROM AlerteStock a
+                JOIN Produit p ON a.Id_Produit = p.Id_Produit
+                WHERE a.Statut IN ('NON_LUE', 'VU', 'EN_COURS')
+                AND p.StockActuel < a.Seuil_Alerte_Vise
+            """)
+            val = cur.fetchone()['value_needed']
+            stats['value_needed'] = val if val else 0
+
+            # 3. Commandes en retard (Simulation: En attente depuis > 7 jours)
+            cur.execute("""
+                SELECT COUNT(*) as late_orders
+                FROM Achat
+                WHERE Statut = 'EN_ATTENTE'
+                AND DateAchat < CURRENT_DATE - INTERVAL '7 days'
+            """)
+            stats['late_orders'] = cur.fetchone()['late_orders']
+            
+            return stats
+        except Exception as e:
+            print(f"Erreur get_purchasing_dashboard_stats: {e}")
+            return {'total_active': 0, 'critical': 0, 'high': 0, 'value_needed': 0, 'late_orders': 0}
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def get_alert_purchasing_context(product_id):
+        """Récupère le contexte décisionnel pour un produit en alerte"""
+        conn = Database.get_connection()
+        if not conn: return None
+        cur = connection.get_cursor(conn)
+        try:
+            context = {}
+            
+            # 1. Ventes 30 derniers jours
+            cur.execute("""
+                SELECT COALESCE(SUM(lv.QteVendue), 0) as sales_30d
+                FROM LigneVente lv
+                JOIN Vente v ON lv.Id_Vente = v.Id_Vente
+                WHERE lv.Id_Produit = %s
+                AND v.DateVente > CURRENT_DATE - INTERVAL '30 days'
+            """, (product_id,))
+            context['sales_30d'] = cur.fetchone()['sales_30d']
+
+            # 2. Dernière commande fournisseur
+            cur.execute("""
+                SELECT MAX(a.DateAchat) as last_order
+                FROM Achat a
+                JOIN LigneAchat la ON a.Id_Achat = la.Id_Achat
+                WHERE la.Id_Produit = %s
+            """, (product_id,))
+            context['last_supplier_order'] = cur.fetchone()['last_order']
+
+            # 3. Fréquence ruptures (Alertes créées 90 derniers jours)
+            cur.execute("""
+                SELECT COUNT(*) as alert_count
+                FROM AlerteStock
+                WHERE Id_Produit = %s
+                AND Date_Creation > CURRENT_DATE - INTERVAL '90 days'
+            """, (product_id,))
+            context['shortage_freq_90d'] = cur.fetchone()['alert_count']
+            
+            return context
+        except Exception as e:
+            print(f"Erreur get_alert_purchasing_context: {e}")
+            return None
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def create_purchase_order(user_id, supplier_id, lines, linked_alert_ids=None):
+        """
+        Crée une commande fournisseur et met à jour les alertes liées
+        lines: list of dict {'product_id': str, 'qty': int, 'price': float}
+        linked_alert_ids: list of int (Alert IDs to update)
+        """
+        conn = Database.get_connection()
+        if not conn: return False
+        cur = connection.get_cursor(conn)
+        try:
+            # 1. Créer la commande
+            cur.execute("""
+                INSERT INTO Achat (Id_Utilisateur, Id_Fournisseur, Statut, DateAchat)
+                VALUES (%s, %s, 'EN_ATTENTE', CURRENT_TIMESTAMP)
+                RETURNING Id_Achat
+            """, (user_id, supplier_id))
+            purchase_id = cur.fetchone()['id_achat']
+
+            # 2. Insérer les lignes
+            for line in lines:
+                cur.execute("""
+                    INSERT INTO LigneAchat (Id_Achat, Id_Produit, Quantite, PrixAchatNegocie)
+                    VALUES (%s, %s, %s, %s)
+                """, (purchase_id, line['product_id'], line['qty'], line['price']))
+
+            # 3. Mettre à jour les alertes liées
+            if linked_alert_ids:
+                for alert_id in linked_alert_ids:
+                    # On ne met à jour QUE si l'alerte n'est pas déjà archivée
+                    cur.execute("""
+                        UPDATE AlerteStock
+                        SET Statut = 'COMMANDE_PASSEE',
+                            Id_Achat_Genere = %s,
+                            Date_Traitement = CURRENT_TIMESTAMP,
+                            Commentaire = COALESCE(Commentaire, '') || ' [Auto: Commande #' || %s || ' créée]'
+                        WHERE Id_Alerte = %s AND Statut IN ('NON_LUE', 'VU', 'EN_COURS')
+                    """, (purchase_id, purchase_id, alert_id))
+
+            conn.commit()
+            return purchase_id
+        except Exception as e:
+            conn.rollback()
+            print(f"Erreur create_purchase_order: {e}")
+            return False
+        finally:
+            cur.close()
+            conn.close()
+    
+    @staticmethod
+    def get_suppliers():
+        """Liste simple des fournisseurs"""
+        conn = Database.get_connection()
+        if not conn: return []
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("SELECT Id_Fournisseur, Nom, Contact FROM Fournisseur ORDER BY Nom")
+            return cur.fetchall()
+        except: return []
+        finally: cur.close(); conn.close()
+
+    @staticmethod
+    def get_supplier_orders(status_filter=None):
+        """Récupère les commandes fournisseurs"""
+        conn = Database.get_connection()
+        if not conn: return []
+        cur = connection.get_cursor(conn)
+        try:
+            query = """
+                SELECT a.Id_Achat as id_achat, a.DateAchat as date_achat, 
+                       a.Statut as statut, f.Nom as fournisseur,
+                       (SELECT COUNT(*) FROM LigneAchat la WHERE la.Id_Achat = a.Id_Achat) as nb_lignes
+                FROM Achat a
+                JOIN Fournisseur f ON a.Id_Fournisseur = f.Id_Fournisseur
+            """
+            params = []
+            if status_filter:
+                query += " WHERE a.Statut = %s"
+                params.append(status_filter)
+            
+            query += " ORDER BY a.DateAchat DESC"
+            
+            cur.execute(query, tuple(params))
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_supplier_orders: {e}")
             return []
         finally:
             cur.close()
