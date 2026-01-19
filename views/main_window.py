@@ -172,8 +172,23 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.stock_view)
         self.views.append(self.stock_view)
         
-        # 3. Purchase
-        self.purchase_view = PurchaseView()
+        # 3. Purchase (NOUVEAU MODULE)
+        # Note: PurchasingManagerView est un QWidget autonome avec sa propre sidebar.
+        # Pour l'intégrer dans MainWindow (qui a DÉJÀ une sidebar), nous pouvons soit :
+        # A) L'afficher telle quelle (double sidebar, moche)
+        # B) Masquer sa sidebar (si possible)
+        # C) Utiliser seulement le Dashboard pour l'Admin
+        # Pour l'instant, on instancie la vue complète mais on sait que ça fera double emploi.
+        # Idéalement, on refactoriserait pour extraire le contenu.
+        # SOLUTION RAPIDE: On met la nouvelle vue, c'est mieux que l'ancienne buggée.
+        
+        from views.responsable_achats.purchasing_manager_view import PurchasingManagerView
+        # On passe un ID user dummy ou celui de l'admin
+        self.purchase_view = PurchasingManagerView(id_utilisateur=1, nom_utilisateur=self.user_name)
+        # Hack pour masquer la sidebar interne si on est dans MainWindow ?
+        if hasattr(self.purchase_view, 'sidebar'):
+            self.purchase_view.sidebar.hide()
+            
         self.stacked_widget.addWidget(self.purchase_view)
         self.views.append(self.purchase_view)
         

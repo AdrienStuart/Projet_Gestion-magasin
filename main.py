@@ -59,6 +59,15 @@ class AppController:
                 nom_utilisateur=user['nom']
             )
             self.main_window.controller = self
+
+        # Pour le Responsable Achats (Accepter avec ou sans underscore, ou 'Acheteur')
+        elif user['role'] in ['Responsable Achats', 'Responsable_Achats', 'Acheteur']:
+            from views.responsable_achats.purchasing_manager_view import PurchasingManagerView
+            self.main_window = PurchasingManagerView(
+                id_utilisateur=user.get('id_utilisateur', 1),
+                nom_utilisateur=user['nom']
+            )
+            self.main_window.controller = self
             
         else:
             # Pour Admin / Responsable Achats -> MainWindow

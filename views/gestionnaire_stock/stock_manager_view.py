@@ -25,11 +25,12 @@ class StockManagerView(QWidget):
     Architecture identique au Caissier (QWidget avec Layout)
     """
     
-    # Index des écrans du StackedWidget
+    # Index des écrans
     INDEX_STOCK = 0
     INDEX_MOUVEMENTS = 1
     INDEX_ALERTES = 2
-    INDEX_STATS = 3
+    INDEX_SIGNALEMENTS = 3
+    INDEX_STATS = 4
     
     def __init__(self, id_utilisateur: int = 1, nom_utilisateur: str = "Gestionnaire"):
         super().__init__()
@@ -40,6 +41,9 @@ class StockManagerView(QWidget):
         self.id_utilisateur = id_utilisateur
         self.nom_utilisateur = nom_utilisateur
         self.is_sidebar_collapsed = False
+        
+        self.INDEX_SIGNALEMENTS = 3
+        self.INDEX_STATS = 4
         
         self.setup_ui()
         self.afficher_tableau_stock()
