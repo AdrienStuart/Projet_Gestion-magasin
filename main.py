@@ -68,9 +68,18 @@ class AppController:
                 nom_utilisateur=user['nom']
             )
             self.main_window.controller = self
+        
+        # Pour l'Administrateur
+        elif user['role'] == 'Administrateur':
+            from views.admin.admin_view import AdminView
+            self.main_window = AdminView(
+                user_id=user.get('id_utilisateur', 1),
+                user_name=user['nom']
+            )
+            self.main_window.controller = self
             
         else:
-            # Pour Admin / Responsable Achats -> MainWindow
+            # Fallback -> MainWindow générique
             self.main_window = MainWindow(
                 user_role=user['role'], 
                 user_name=user['nom'], 

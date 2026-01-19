@@ -1,134 +1,216 @@
+"""
+Module Administrateur
+Rôle: Gouvernance, Pilotage, Contrôle
+L'admin observe, compare, tranche - il n'opère pas
+"""
 
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QPushButton, QFrame, QGridLayout, QSizePolicy)
-from PySide6.QtCore import Qt
-import qtawesome as qta
-from db.database import Database
+from PySide6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
+                               QStackedWidget, QLabel, QFrame)
+from PySide6.QtCore import Qt, QTimer
+from datetime import datetime
 
-# Try importing plotting libs
-try:
-    import pyqtgraph as pg
-    HAS_PLOT = True
-except ImportError:
-    HAS_PLOT = False
+# Import des écrans
+from views.admin.strategic_dashboard import StrategicDashboard
+from views.admin.commercial_performance import CommercialPerformance
+from views.admin.stock_governance import StockGovernance
+from views.admin.system_settings import SystemSettings
+from views.admin.audit_trail import AuditTrail
 
-class KPICard(QFrame):
-    def __init__(self, title, value, icon_name, color):
-        super().__init__()
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: #2A2A40;
-                border-radius: 12px;
-                border-left: 5px solid {color};
-            }}
-        """)
-        self.setFixedHeight(120)
-        
-        layout = QHBoxLayout(self)
-        
-        # Icon
-        icon = QLabel()
-        icon.setPixmap(qta.icon(icon_name, color=color).pixmap(48, 48))
-        layout.addWidget(icon)
-        
-        # Text
-        text_layout = QVBoxLayout()
-        title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("color: #A0A0B0; font-size: 12pt;")
-        
-        self.value_lbl = QLabel(value)
-        self.value_lbl.setStyleSheet(f"color: white; font-size: 24pt; font-weight: bold;")
-        
-        text_layout.addWidget(title_lbl)
-        text_layout.addWidget(self.value_lbl)
-        layout.addLayout(text_layout)
 
 class AdminView(QWidget):
-    def __init__(self):
+    """
+    Vue principale Administrateur
+    Style: Executive, professionnel, clean
+    """
+    
+    INDEX_DASHBOARD = 0
+    INDEX_PERFORMANCE = 1
+    INDEX_STOCK = 2
+    INDEX_SETTINGS = 3
+    INDEX_AUDIT = 4
+    
+    def __init__(self, user_id: int = 1, user_name: str = "Admin"):
         super().__init__()
-        layout = QVBoxLayout(self)
+        self.user_id = user_id
+        self.user_name = user_name
         
-        # 1. KPIs Row
-        kpi_layout = QHBoxLayout()
-        self.card_daily = KPICard("CA du Jour", "0 FCFA", "fa5s.coins", "#00C853")
-        self.card_monthly = KPICard("CA Mensuel", "0 FCFA", "fa5s.chart-line", "#2979FF")
-        self.card_alerts = KPICard("Alertes Stock", "0", "fa5s.exclamation-triangle", "#FF3D00")
+        self.setWindowTitle("Administration - Pilotage Stratégique")
+        self.resize(1400, 850)
         
-        kpi_layout.addWidget(self.card_daily)
-        kpi_layout.addWidget(self.card_monthly)
-        kpi_layout.addWidget(self.card_alerts)
-        layout.addLayout(kpi_layout)
+        # Style exécutif sombre
+        self.setStyleSheet("background-color: #0D1117; color: #E6EDF3;")
         
-        # 2. Charts Area
-        charts_layout = QHBoxLayout()
+        self.setup_ui()
+        self.afficher_dashboard()
+    
+    def setup_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         
-        # Chart 1: Bar Chart (Weekly Sales)
-        self.chart1_container = QFrame()
-        self.chart1_layout = QVBoxLayout(self.chart1_container)
-        self.chart1_layout.addWidget(QLabel("Ventes des 7 derniers jours"))
-        if HAS_PLOT:
-            self.bar_plot = pg.PlotWidget()
-            self.bar_plot.setBackground('#2A2A40')
-            self.chart1_layout.addWidget(self.bar_plot)
-            # Mock Data
-            x = [1, 2, 3, 4, 5, 6, 7]
-            y = [10, 15, 8, 20, 25, 18, 30]
-            bg = pg.BarGraphItem(x=x, height=y, width=0.6, brush='#00C853')
-            self.bar_plot.addItem(bg)
+        # Sidebar
+        self._creer_sidebar(layout)
+        
+        # Zone principale
+        self.container_droit = QWidget()
+        layout_droit = QVBoxLayout(self.container_droit)
+        layout_droit.setContentsMargins(0, 0, 0, 0)
+        layout_droit.setSpacing(0)
+        
+        # Top Bar
+        self._creer_top_bar(layout_droit)
+        
+        # Stacked Widget
+        self.stacked_widget = QStackedWidget()
+        layout_droit.addWidget(self.stacked_widget)
+        
+        layout.addWidget(self.container_droit)
+        
+        # Init screens
+        self._init_screens()
+    
+    def _creer_sidebar(self, parent_layout):
+        self.sidebar = QFrame()
+        self.sidebar.setFixedWidth(260)
+        self.sidebar.setStyleSheet("background-color: #161B22; border-right: 1px solid #30363D;")
+        
+        lay = QVBoxLayout(self.sidebar)
+        lay.setContentsMargins(15, 30, 15, 30)
+        lay.setSpacing(12)
+        
+        # Logo
+        lbl = QLabel("⚙️ ADMINISTRATION")
+        lbl.setStyleSheet("color: #58A6FF; font-size: 16pt; font-weight: bold; margin-bottom: 25px;")
+        lay.addWidget(lbl)
+        
+        # Navigation
+        self.btn_dash = self._make_btn("📊 Dashboard", True)
+        self.btn_dash.clicked.connect(self.afficher_dashboard)
+        lay.addWidget(self.btn_dash)
+        
+        self.btn_perf = self._make_btn("📈 Performance", False)
+        self.btn_perf.clicked.connect(self.afficher_performance)
+        lay.addWidget(self.btn_perf)
+        
+        self.btn_stock = self._make_btn("📦 Pilotage Stocks", False)
+        self.btn_stock.clicked.connect(self.afficher_stock)
+        lay.addWidget(self.btn_stock)
+        
+        self.btn_settings = self._make_btn("⚙️ Gouvernance", False)
+        self.btn_settings.clicked.connect(self.afficher_settings)
+        lay.addWidget(self.btn_settings)
+        
+        self.btn_audit = self._make_btn("🔍 Audit", False)
+        self.btn_audit.clicked.connect(self.afficher_audit)
+        lay.addWidget(self.btn_audit)
+        
+        lay.addStretch()
+        
+        # User info
+        lbl_user = QLabel(f"👤 {self.user_name}")
+        lbl_user.setStyleSheet("color: #8B949E; font-size: 10pt;")
+        lay.addWidget(lbl_user)
+        
+        # Logout
+        btn_logout = QPushButton("🚪 Déconnexion")
+        btn_logout.setStyleSheet("""
+            QPushButton {
+                color: #F85149; background: transparent; border: 1px solid #F85149;
+                padding: 8px; border-radius: 6px; font-size: 10pt;
+            }
+            QPushButton:hover { background-color: rgba(248, 81, 73, 0.1); }
+        """)
+        btn_logout.clicked.connect(self._logout)
+        lay.addWidget(btn_logout)
+        
+        parent_layout.addWidget(self.sidebar)
+    
+    def _make_btn(self, text, active):
+        btn = QPushButton(text)
+        btn.setCheckable(True)
+        btn.setChecked(active)
+        btn.setFixedHeight(48)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent; color: #C9D1D9; font-size: 11pt;
+                text-align: left; padding-left: 18px; border-radius: 8px; border: none;
+            }
+            QPushButton:checked {
+                background-color: #1F6FEB; color: white; font-weight: bold;
+            }
+            QPushButton:hover:!checked {
+                background-color: #21262D;
+            }
+        """)
+        return btn
+    
+    def _creer_top_bar(self, layout):
+        bar = QFrame()
+        bar.setFixedHeight(70)
+        bar.setStyleSheet("background-color: #161B22; border-bottom: 1px solid #30363D;")
+        
+        l = QHBoxLayout(bar)
+        l.setContentsMargins(30, 0, 30, 0)
+        
+        self.lbl_page_title = QLabel("TABLEAU DE BORD STRATÉGIQUE")
+        self.lbl_page_title.setStyleSheet("font-size: 16pt; font-weight: bold; color: #E6EDF3;")
+        l.addWidget(self.lbl_page_title)
+        
+        l.addStretch()
+        
+        self.lbl_time = QLabel()
+        self.lbl_time.setStyleSheet("color: #8B949E; font-size: 12pt;")
+        l.addWidget(self.lbl_time)
+        
+        layout.addWidget(bar)
+        
+        # Timer
+        timer = QTimer(self)
+        timer.timeout.connect(lambda: self.lbl_time.setText(datetime.now().strftime("%d/%m/%Y %H:%M")))
+        timer.start(1000)
+        self.lbl_time.setText(datetime.now().strftime("%d/%m/%Y %H:%M"))
+    
+    def _init_screens(self):
+        self.screen_dashboard = StrategicDashboard()
+        self.screen_performance = CommercialPerformance()
+        self.screen_stock = StockGovernance()
+        self.screen_settings = SystemSettings()
+        self.screen_audit = AuditTrail()
+        
+        self.stacked_widget.addWidget(self.screen_dashboard)
+        self.stacked_widget.addWidget(self.screen_performance)
+        self.stacked_widget.addWidget(self.screen_stock)
+        self.stacked_widget.addWidget(self.screen_settings)
+        self.stacked_widget.addWidget(self.screen_audit)
+    
+    def _update_nav(self, btn, idx, title):
+        for b in [self.btn_dash, self.btn_perf, self.btn_stock, self.btn_settings, self.btn_audit]:
+            b.setChecked(b == btn)
+        self.stacked_widget.setCurrentIndex(idx)
+        self.lbl_page_title.setText(title)
+        
+        # Refresh
+        widget = self.stacked_widget.widget(idx)
+        if hasattr(widget, 'rafraichir'):
+            widget.rafraichir()
+    
+    def afficher_dashboard(self):
+        self._update_nav(self.btn_dash, self.INDEX_DASHBOARD, "TABLEAU DE BORD STRATÉGIQUE")
+    
+    def afficher_performance(self):
+        self._update_nav(self.btn_perf, self.INDEX_PERFORMANCE, "PERFORMANCE COMMERCIALE")
+    
+    def afficher_stock(self):
+        self._update_nav(self.btn_stock, self.INDEX_STOCK, "PILOTAGE DES STOCKS")
+    
+    def afficher_settings(self):
+        self._update_nav(self.btn_settings, self.INDEX_SETTINGS, "GOUVERNANCE SYSTÈME")
+    
+    def afficher_audit(self):
+        self._update_nav(self.btn_audit, self.INDEX_AUDIT, "AUDIT & TRAÇABILITÉ")
+    
+    def _logout(self):
+        if hasattr(self, 'controller'):
+            self.controller.logout()
         else:
-            self.chart1_layout.addWidget(QLabel("Installer 'pyqtgraph' pour voir le graphique"))
-            
-        # Chart 2: Placeholder for Pie (PyQtGraph doesn't do Pies easily, just show text or rects)
-        self.chart2_container = QFrame()
-        self.chart2_layout = QVBoxLayout(self.chart2_container)
-        self.chart2_layout.addWidget(QLabel("Top Catégories (Volume)"))
-        if HAS_PLOT:
-             self.line_plot = pg.PlotWidget()
-             self.line_plot.setBackground('#2A2A40')
-             self.chart2_layout.addWidget(self.line_plot)
-             self.line_plot.plot([1, 4, 2, 3, 5], pen=pg.mkPen(color='#2979FF', width=3))
-        else:
-             self.chart2_layout.addWidget(QLabel("Graphique non disponible"))
-
-        charts_layout.addWidget(self.chart1_container)
-        charts_layout.addWidget(self.chart2_container)
-        layout.addLayout(charts_layout)
-        
-        # 3. Footer / Actions
-        footer_layout = QHBoxLayout()
-        footer_layout.addStretch()
-        
-        self.btn_refresh = QPushButton("Actualiser les Statistiques")
-        self.btn_refresh.setIcon(qta.icon('fa5s.sync', color='white'))
-        self.btn_refresh.clicked.connect(self.refresh_stats)
-        footer_layout.addWidget(self.btn_refresh)
-        
-        layout.addLayout(footer_layout)
-        
-        self.load_data()
-
-    def load_data(self):
-        # Update KPIs with real data
-        daily = Database.get_kpi_daily_revenue()
-        self.card_daily.value_lbl.setText(f"{daily:,.0f} FCFA")
-        
-        # TODO: Get other metrics from DB
-        # monthly = ...
-        # alerts = ...
-
-    def refresh_stats(self):
-        self.btn_refresh.setEnabled(False)
-        self.btn_refresh.setText("Actualisation...")
-        
-        success = Database.refresh_materialized_views()
-        
-        self.btn_refresh.setEnabled(True)
-        self.btn_refresh.setText("Actualiser les Statistiques")
-        
-        if success:
-            self.load_data()
-            # Update charts if real data available
-        else:
-            # Maybe show error
-            pass
-
+            self.close()
