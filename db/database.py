@@ -914,3 +914,369 @@ class Database:
             cur.close()
             conn.close()
 
+# ================= ADMIN MODULE =================
+
+@staticmethod
+def get_admin_dashboard_kpis():
+    """
+    Dashboard stratégique - KPIs exécutifs
+    Returns: dict with ca_today, ca_month, ca_year, marge_brute, 
+             top_products, low_rotation, critical_alerts, stock_value
+    """
+    conn = Database.get_connection()
+    if not conn: return None
+    cur = connection.get_cursor(conn)
+    
+    try:
+        result = {}
+        
+        # CA Aujourd'hui
+        cur.execute("""
+            SELECT COALESCE(SUM(MontantTotal), 0) as ca_today
+            FROM Recu
+            WHERE DATE(DateEmission) = CURRENT_DATE
+        """)
+        result['ca_today'] = cur.fetchone()['ca_today']
+        
+        # CA Mois
+        cur.execute("""
+            SELECT COALESCE(SUM(MontantTotal), 0) as ca_month
+            FROM Recu
+            WHERE DATE_TRUNC('month', DateEmission) = DATE_TRUNC('month', CURRENT_DATE)
+        """)
+        result['ca_month'] = cur.fetchone()['ca_month']
+        
+        # CA Année
+        cur.execute("""
+            SELECT COALESCE(SUM(MontantTotal), 0) as ca_year
+            FROM Recu
+            WHERE DATE_TRUNC('year', DateEmission) = DATE_TRUNC('year', CURRENT_DATE)
+        """)
+        result['ca_year'] = cur.fetchone()['ca_year']
+        
+        # Marge brute estimée (CA - Coût achat estimé des ventes du mois)
+        cur.execute("""
+            SELECT 
+                COALESCE(SUM(lv.QteVendue * (lv.PrixUnitaireVendu - COALESCE(la.PrixAchatNegocie, p.PrixUnitaireActuel * 0.6))), 0) as marge
+            FROM LigneVente lv
+            JOIN Vente v ON lv.Id_Vente = v.Id_Vente
+            JOIN Produit p ON lv.Id_Produit = p.Id_Produit
+            LEFT JOIN LATERAL (
+                SELECT PrixAchatNegocie 
+                FROM LigneAchat la2 
+                WHERE la2.Id_Produit = lv.Id_Produit 
+                ORDER BY Id_Achat DESC LIMIT 1
+            ) la ON true
+            WHERE DATE_TRUNC('month', v.DateVente) = DATE_TRUNC('month', CURRENT_DATE)
+        """)
+        result['marge_brute'] = cur.fetchone()['marge']
+        
+        # Top 5 produits vendus (mois)
+        cur.execute("""
+            SELECT p.Nom, SUM(lv.QteVendue) as qty
+            FROM LigneVente lv
+            JOIN Vente v ON lv.Id_Vente = v.Id_Vente
+            JOIN Produit p ON lv.Id_Produit = p.Id_Produit
+            WHERE DATE_TRUNC('month', v.DateVente) = DATE_TRUNC('month', CURRENT_DATE)
+            GROUP BY p.Nom
+            ORDER BY qty DESC
+            LIMIT 5
+        """)
+        result['top_products'] = cur.fetchall()
+        
+        # Produits faible rotation (pas vendus depuis 30j)
+        cur.execute("""
+            SELECT p.Nom, p.StockActuel
+            FROM Produit p
+            WHERE NOT EXISTS (
+                SELECT 1 FROM LigneVente lv
+                JOIN Vente v ON lv.Id_Vente = v.Id_Vente
+                WHERE lv.Id_Produit = p.Id_Produit
+                AND v.DateVente >= CURRENT_DATE - INTERVAL '30 days'
+            )
+            AND p.StockActuel > 0
+            ORDER BY p.StockActuel DESC
+            LIMIT 5
+        """)
+        result['low_rotation'] = cur.fetchall()
+        
+        # Alertes critiques actives
+        cur.execute("""
+            SELECT COUNT(*) as count
+            FROM AlerteStock
+            WHERE Priorite = 'CRITICAL'
+            AND Statut IN ('NON_LUE', 'VU', 'EN_COURS')
+        """)
+        result['critical_alerts'] = cur.fetchone()['count']
+        
+        # Valeur stock immobilisé
+        cur.execute("""
+            SELECT COALESCE(SUM(StockActuel * PrixUnitaireActuel), 0) as value
+            FROM Produit
+        """)
+        result['stock_value'] = cur.fetchone()['value']
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error in get_admin_dashboard_kpis: {e}")
+        return None
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def get_sales_by_period(start_date=None, end_date=None):
+    """Performance commerciale - CA par période"""
+    conn = Database.get_connection()
+    if not conn: return []
+    cur = connection.get_cursor(conn)
+    
+    try:
+        query = """
+            SELECT 
+                DATE(v.DateVente) as date,
+                COUNT(DISTINCT v.Id_Vente) as nb_ventes,
+                COALESCE(SUM(r.MontantTotal), 0) as ca
+            FROM Vente v
+            LEFT JOIN Recu r ON v.Id_Vente = r.Id_Vente
+            WHERE 1=1
+        """
+        params = []
+        
+        if start_date:
+            query += " AND v.DateVente >= %s"
+            params.append(start_date)
+        if end_date:
+            query += " AND v.DateVente <= %s"
+            params.append(end_date)
+            
+        query += " GROUP BY DATE(v.DateVente) ORDER BY date DESC"
+        
+        cur.execute(query, tuple(params))
+        return cur.fetchall()
+        
+    except Exception as e:
+        print(f"Error in get_sales_by_period: {e}")
+        return []
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def get_sales_by_product(limit=10):
+    """Performance - Top produits par CA"""
+    conn = Database.get_connection()
+    if not conn: return []
+    cur = connection.get_cursor(conn)
+    
+    try:
+        cur.execute("""
+            SELECT 
+                p.Nom as produit,
+                SUM(lv.QteVendue) as qty_vendue,
+                SUM(lv.QteVendue * lv.PrixUnitaireVendu) as ca
+            FROM LigneVente lv
+            JOIN Produit p ON lv.Id_Produit = p.Id_Produit
+            JOIN Vente v ON lv.Id_Vente = v.Id_Vente
+            WHERE v.DateVente >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY p.Nom
+            ORDER BY ca DESC
+            LIMIT %s
+        """, (limit,))
+        return cur.fetchall()
+        
+    except Exception as e:
+        print(f"Error in get_sales_by_product: {e}")
+        return []
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def get_sales_by_cashier():
+    """Performance - CA par caissier"""
+    conn = Database.get_connection()
+    if not conn: return []
+    cur = connection.get_cursor(conn)
+    
+    try:
+        cur.execute("""
+            SELECT 
+                u.Nom as caissier,
+                COUNT(DISTINCT v.Id_Vente) as nb_ventes,
+                COALESCE(SUM(r.MontantTotal), 0) as ca,
+                COALESCE(AVG(r.MontantTotal), 0) as panier_moyen
+            FROM Vente v
+            LEFT JOIN Recu r ON v.Id_Vente = r.Id_Vente
+            JOIN Utilisateur u ON v.Id_Utilisateur = u.Id_Utilisateur
+            WHERE v.DateVente >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY u.Nom
+            ORDER BY ca DESC
+        """)
+        return cur.fetchall()
+        
+    except Exception as e:
+        print(f"Error in get_sales_by_cashier: {e}")
+        return []
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def get_stock_analysis():
+    """Pilotage stocks - Analyse complète"""
+    conn = Database.get_connection()
+    if not conn: return None
+    cur = connection.get_cursor(conn)
+    
+    try:
+        result = {}
+        
+        # Valeur totale stock
+        cur.execute("""
+            SELECT COALESCE(SUM(StockActuel * PrixUnitaireActuel), 0) as total
+            FROM Produit
+        """)
+        result['total_value'] = cur.fetchone()['total']
+        
+        # Produits dormants (pas vendus 30j)
+        cur.execute("""
+            SELECT p.Nom, p.StockActuel, p.PrixUnitaireActuel,
+                   (p.StockActuel * p.PrixUnitaireActuel) as valeur_immobilisee
+            FROM Produit p
+            WHERE NOT EXISTS (
+                SELECT 1 FROM LigneVente lv
+                JOIN Vente v ON lv.Id_Vente = v.Id_Vente
+                WHERE lv.Id_Produit = p.Id_Produit
+                AND v.DateVente >= CURRENT_DATE - INTERVAL '30 days'
+            )
+            AND p.StockActuel > 0
+            ORDER BY valeur_immobilisee DESC
+        """)
+        result['dormant_products'] = cur.fetchall()
+        
+        # Ruptures récurrentes (>2 alertes en 90j)
+        cur.execute("""
+            SELECT p.Nom, COUNT(*) as nb_ruptures
+            FROM AlerteStock a
+            JOIN Produit p ON a.Id_Produit = p.Id_Produit
+            WHERE a.Date_Creation >= CURRENT_DATE - INTERVAL '90 days'
+            AND a.Priorite IN ('CRITICAL', 'HIGH')
+            GROUP BY p.Nom
+            HAVING COUNT(*) > 2
+            ORDER BY nb_ruptures DESC
+        """)
+        result['recurring_stockouts'] = cur.fetchall()
+        
+        # Surstocks (stock > 3x seuil)
+        cur.execute("""
+            SELECT Nom, StockActuel, StockAlerte,
+                   (StockActuel * PrixUnitaireActuel) as valeur
+            FROM Produit
+            WHERE StockActuel > (StockAlerte * 3)
+            ORDER BY valeur DESC
+        """)
+        result['overstocked'] = cur.fetchall()
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error in get_stock_analysis: {e}")
+        return None
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def get_audit_log(action_type=None, user_id=None, limit=100):
+    """Audit - Log des actions système"""
+    conn = Database.get_connection()
+    if not conn: return []
+    cur = connection.get_cursor(conn)
+    
+    try:
+        # Pour une vraie prod, on aurait une table AuditLog
+        # Ici on simule avec les tables existantes
+        logs = []
+        
+        # Ventes
+        cur.execute("""
+            SELECT 
+                'VENTE' as action,
+                u.Nom as user,
+                v.DateVente as timestamp,
+                CONCAT('Vente #', v.Id_Vente, ' - ', r.MontantTotal, ' FCFA') as details
+            FROM Vente v
+            JOIN Utilisateur u ON v.Id_Utilisateur = u.Id_Utilisateur
+            LEFT JOIN Recu r ON v.Id_Vente = r.Id_Vente
+            WHERE v.DateVente >= CURRENT_DATE - INTERVAL '7 days'
+            ORDER BY v.DateVente DESC
+            LIMIT %s
+        """, (limit,))
+        logs.extend(cur.fetchall())
+        
+        # Achats
+        cur.execute("""
+            SELECT 
+                'ACHAT' as action,
+                u.Nom as user,
+                a.DateAchat as timestamp,
+                CONCAT('Achat #', a.Id_Achat, ' - ', f.Nom) as details
+            FROM Achat a
+            JOIN Utilisateur u ON a.Id_Utilisateur = u.Id_Utilisateur
+            JOIN Fournisseur f ON a.Id_Fournisseur = f.Id_Fournisseur
+            WHERE a.DateAchat >= CURRENT_DATE - INTERVAL '7 days'
+            ORDER BY a.DateAchat DESC
+            LIMIT %s
+        """, (limit,))
+        logs.extend(cur.fetchall())
+        
+        # Trier par timestamp
+        logs.sort(key=lambda x: x['timestamp'], reverse=True)
+        return logs[:limit]
+        
+    except Exception as e:
+        print(f"Error in get_audit_log: {e}")
+        return []
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def get_system_users():
+    """Gouvernance - Liste utilisateurs"""
+    conn = Database.get_connection()
+    if not conn: return []
+    cur = connection.get_cursor(conn)
+    
+    try:
+        cur.execute("""
+            SELECT Id_Utilisateur, Nom, Role, email
+            FROM Utilisateur
+            ORDER BY Role, Nom
+        """)
+        return cur.fetchall()
+        
+    except Exception as e:
+        print(f"Error in get_system_users: {e}")
+        return []
+    finally:
+        connection.close_connection(conn)
+
+@staticmethod
+def update_product_threshold(product_id, new_threshold):
+    """Gouvernance - Modifier seuil produit"""
+    conn = Database.get_connection()
+    if not conn: return False
+    cur = connection.get_cursor(conn)
+    
+    try:
+        cur.execute("""
+            UPDATE Produit
+            SET StockAlerte = %s
+            WHERE Id_Produit = %s
+        """, (new_threshold, product_id))
+        conn.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Error in update_product_threshold: {e}")
+        conn.rollback()
+        return False
+    finally:
+        connection.close_connection(conn)
