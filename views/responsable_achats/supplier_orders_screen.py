@@ -114,6 +114,6 @@ class SupplierOrdersScreen(QWidget):
             status_item = QTableWidgetItem(status)
             color = "#FF9100" if status == "EN_ATTENTE" else "#00E676" if status == "RECU" else "#9E9E9E"
             status_item.setForeground(QBrush(QColor(color)))
-            status_item.setFont(Qt.font()) # Reset font but keeping color
+            # status_item.setFont(QFont()) # Reset font but keeping color (removed unnecessary call)
             self.table.setItem(row, 4, status_item)
 
