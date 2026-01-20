@@ -130,10 +130,7 @@ class CashierView(QWidget):
                 background-color: rgba(255, 61, 0, 0.1);
             }
         """)
-        # Get controller from parent
-        main_window = self.window()
-        if hasattr(main_window, 'controller') and main_window.controller:
-            btn_logout.clicked.connect(main_window.controller.logout)
+        btn_logout.clicked.connect(self._on_logout_clicked)
         sidebar_layout.addWidget(btn_logout)
         
         parent_layout.addWidget(self.sidebar)
@@ -265,3 +262,10 @@ class CashierView(QWidget):
         """Met à jour l'affichage de l'heure"""
         maintenant = datetime.now()
         self.lbl_heure.setText(maintenant.strftime("%H:%M:%S"))
+        
+    def _on_logout_clicked(self):
+        """Gère le clic sur déconnexion"""
+        if hasattr(self, 'controller') and self.controller:
+            self.controller.logout()
+        else:
+            self.close()
