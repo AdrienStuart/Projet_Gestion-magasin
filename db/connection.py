@@ -22,3 +22,8 @@ def get_connection():
 def get_cursor(conn):
     """Renvoie un curseur avec dictionnaire"""
     return conn.cursor(cursor_factory=RealDictCursor)
+
+def close_connection(conn):
+    """Ferme la connexion proprement"""
+    if conn:
+        conn.close()

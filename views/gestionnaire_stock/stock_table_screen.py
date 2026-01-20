@@ -364,7 +364,7 @@ class StockTableScreen(QWidget):
                 couleur = QColor("#FF9800")
                 text_color = QColor("white")
             else:
-                statut_text = "✅ OK"
+                statut_text = "OK"
                 couleur = QColor("#00C853")
                 text_color = QColor("white")
             

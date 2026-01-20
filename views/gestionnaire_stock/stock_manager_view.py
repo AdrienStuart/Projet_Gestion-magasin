@@ -92,7 +92,7 @@ class StockManagerView(QWidget):
         layout_sidebar.setSpacing(10) # Espacement Caisse
         
         # Titre module
-        lbl_module = QLabel("📦 STOCK")
+        lbl_module = QLabel("📦 GESTION STOCK")
         lbl_module.setStyleSheet("color: #00C853; font-size: 16pt; font-weight: bold; margin-bottom: 20px;")
         lbl_module.setAlignment(Qt.AlignCenter)
         layout_sidebar.addWidget(lbl_module)

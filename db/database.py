@@ -368,9 +368,37 @@ class Database:
         except Exception as e:
             print(f"Erreur get_cashier_stats: {e}")
             return None
+
+    @staticmethod
+    def get_cashier_hourly_stats(user_id):
+        """
+        Récupère le CA et nb tickets par heure pour le caissier (aujourd'hui)
+        """
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            query = """
+                SELECT 
+                    EXTRACT(HOUR FROM v.DateVente) as heure,
+                    COALESCE(SUM(r.MontantTotal), 0) as total,
+                    COUNT(DISTINCT v.Id_Vente) as nb_tickets
+                FROM Vente v
+                LEFT JOIN Recu r ON v.Id_Vente = r.Id_Vente
+                WHERE v.Id_Utilisateur = %s
+                AND DATE(v.DateVente) = CURRENT_DATE
+                GROUP BY heure
+                ORDER BY heure
+            """
+            cur.execute(query, (user_id,))
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_cashier_hourly_stats: {e}")
+            return []
         finally:
-            cur.close()
-            conn.close()
+            connection.close_connection(conn)
 
     # ================= STOCK MANAGER SPECIFIC =================
     
@@ -624,7 +652,34 @@ class Database:
         finally:
             cur.close()
             conn.close()
-    
+
+    @staticmethod
+    def get_stock_history_hourly():
+        """Récupère l'historique horaire des entrées/sorties pour aujourd'hui"""
+        conn = Database.get_connection()
+        if not conn:
+            return []
+        
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT 
+                    EXTRACT(HOUR FROM DateMouvement) as heure,
+                    COALESCE(SUM(CASE WHEN Type = 'ENTREE' THEN Quantite ELSE 0 END), 0) as entrees,
+                    COALESCE(SUM(CASE WHEN Type = 'SORTIE' THEN Quantite ELSE 0 END), 0) as sorties
+                FROM MouvementStock
+                WHERE DATE(DateMouvement) = CURRENT_DATE
+                GROUP BY heure
+                ORDER BY heure ASC
+            """)
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_stock_history_hourly: {e}")
+            return []
+        finally:
+            cur.close()
+            conn.close()
+
     @staticmethod
     def get_persistent_alerts():
         """Récupère les alertes persistantes de la table AlerteStock"""
@@ -666,6 +721,42 @@ class Database:
             conn.close()
 
     @staticmethod
+    def create_manual_alert(id_produit, priorite, commentaire, id_utilisateur):
+        """Crée manuellement une alerte preventative"""
+        conn = Database.get_connection()
+        if not conn:
+            return False, "Erreur de connexion"
+        
+        cur = connection.get_cursor(conn)
+        try:
+            # Récupérer le stock actuel pour le log
+            cur.execute("SELECT StockActuel, StockAlerte FROM Produit WHERE Id_Produit = %s", (id_produit,))
+            p = cur.fetchone()
+            if not p:
+                return False, "Produit non trouvé"
+            
+            stock_actuel = p['stockactuel']
+            seuil_vise = p['stockalerte']
+            
+            # Formater le commentaire pour inclure l'auteur
+            full_comment = f"{commentaire} | Créé manuellement"
+            
+            cur.execute("""
+                INSERT INTO AlerteStock (Id_Produit, Stock_Au_Moment_Alerte, Seuil_Alerte_Vise, Priorite, Statut, Commentaire)
+                VALUES (%s, %s, %s, %s, 'NON_LUE', %s)
+                RETURNING Id_Alerte
+            """, (id_produit, stock_actuel, seuil_vise, priorite, full_comment))
+            
+            conn.commit()
+            return True, "Alerte créée avec succès"
+        except Exception as e:
+            conn.rollback()
+            print(f"Erreur create_manual_alert: {e}")
+            return False, str(e)
+        finally:
+            connection.close_connection(conn)
+
+    @staticmethod
     def update_alert_status(alert_id, new_status, comment=None):
         """Met à jour le statut d'une alerte"""
         conn = Database.get_connection()
@@ -684,15 +775,12 @@ class Database:
                     Date_Traitement = {date_traitement}
             """
             
-            params = [new_status]
             if comment:
-                query += ", Commentaire = COALESCE(Commentaire, '') || %s"
-                params.append(f" | Update: {comment}")
+                query += ", Commentaire = COALESCE(Commentaire, '') || ' | ' || %s"
+                cur.execute(query + " WHERE Id_Alerte = %s", (new_status, comment, alert_id))
+            else:
+                cur.execute(query + " WHERE Id_Alerte = %s", (new_status, alert_id))
                 
-            query += " WHERE Id_Alerte = %s"
-            params.append(alert_id)
-            
-            cur.execute(query, tuple(params))
             conn.commit()
             return True
         except Exception as e:
@@ -700,8 +788,7 @@ class Database:
             print(f"Erreur update_alert_status: {e}")
             return False
         finally:
-            cur.close()
-            conn.close()
+            connection.close_connection(conn)
 
     @staticmethod
     def get_all_categories():

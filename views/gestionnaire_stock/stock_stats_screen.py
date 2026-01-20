@@ -68,6 +68,7 @@ class StockStatsScreen(QWidget):
         layout_filtres.addWidget(lbl_periode)
         
         self.combo_periode = QComboBox()
+        self.combo_periode.addItem("Aujourd'hui", 1)
         self.combo_periode.addItem("7 derniers jours", 7)
         self.combo_periode.addItem("30 derniers jours", 30)
         self.combo_periode.addItem("90 derniers jours", 90)
@@ -221,15 +222,29 @@ class StockStatsScreen(QWidget):
             self.card_mvts.lbl_valeur.setText(f"{stats.get('total_mouvements', 0 or 0):,}")
             self.card_actifs.lbl_valeur.setText(f"{stats.get('produits_actifs', 0 or 0):,}")
         
-        # 2. Données journalières pour graphiques
-        historique = Database.get_stock_history_daily(periode)
-        if not historique:
-            return
+        # 2. Données pour graphiques (Journalier ou Horaire)
+        is_today = (periode == 1)
+        
+        if is_today:
+            historique = Database.get_stock_history_hourly()
+            if not historique: return
             
-        dates = [h['jour'].strftime("%d/%m") for h in historique]
-        entrees = [h['entrees'] for h in historique]
-        sorties = [h['sorties'] for h in historique]
-        totaux = [h['entrees'] + h['sorties'] for h in historique]
+            dates = [f"{int(h['heure'])}h" for h in historique]
+            entrees = [h['entrees'] for h in historique]
+            sorties = [h['sorties'] for h in historique]
+            totaux = [h['entrees'] + h['sorties'] for h in historique]
+            xlabel_rot = 0
+            label_fs = 9
+        else:
+            historique = Database.get_stock_history_daily(periode)
+            if not historique: return
+            
+            dates = [h['jour'].strftime("%d/%m") for h in historique]
+            entrees = [h['entrees'] for h in historique]
+            sorties = [h['sorties'] for h in historique]
+            totaux = [h['entrees'] + h['sorties'] for h in historique]
+            xlabel_rot = 45
+            label_fs = 8
         
         # --- Dessin Graphique 1 (Barres Groupées) ---
         self.figure_barres.clear()
@@ -242,7 +257,7 @@ class StockStatsScreen(QWidget):
         ax1.bar(x + width/2, sorties, width, label='Sorties', color='#F44336', alpha=0.8)
         
         ax1.set_xticks(x)
-        ax1.set_xticklabels(dates, rotation=45, fontsize=8)
+        ax1.set_xticklabels(dates, rotation=xlabel_rot, fontsize=label_fs)
         ax1.legend(loc='upper left', fontsize=9)
         ax1.grid(True, linestyle='--', alpha=0.3)
         self.figure_barres.tight_layout()
@@ -255,7 +270,7 @@ class StockStatsScreen(QWidget):
         ax2.fill_between(dates, totaux, color='#2196F3', alpha=0.1)
         
         ax2.set_xticks(range(len(dates)))
-        ax2.set_xticklabels(dates, rotation=45, fontsize=8)
+        ax2.set_xticklabels(dates, rotation=xlabel_rot, fontsize=label_fs)
         ax2.legend(loc='upper left', fontsize=9)
         ax2.grid(True, linestyle='--', alpha=0.3)
         self.figure_ligne.tight_layout()

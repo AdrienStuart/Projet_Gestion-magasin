@@ -211,8 +211,11 @@ class SignalementsScreen(QWidget):
         return frame
 
     def creer_alerte_manuelle(self):
-        # Dialog pour création préventive (non DB-bound pour l'instant dans ce snippet, simulation UX)
-        QMessageBox.information(self, "Fonctionnalité", "Le module de prédiction/création manuelle sera connecté prochainement.")
+        """Ouvre le dialogue pour créer un signalement préventif"""
+        dlg = DialogueSignalementPreventif(self.id_utilisateur, self)
+        if dlg.exec():
+            # Une petite pause pour laisser le temps à la DB d'être à jour ou notification
+            self.charger_donnees()
 
     def ouvrir_detail_alerte(self, alerte):
         """Ouvre le panneau latéral (simulé par un dialogue ici pour l'instant)"""
@@ -224,13 +227,93 @@ class SignalementsScreen(QWidget):
         self.charger_donnees()
 
 
+class DialogueSignalementPreventif(QDialog):
+    """Dialogue de création manuelle d'alerte (Signalement Préventif)"""
+    def __init__(self, id_utilisateur, parent=None):
+        super().__init__(parent)
+        self.id_utilisateur = id_utilisateur
+        self.setWindowTitle("🔮 Nouveau Signalement Préventif")
+        self.setFixedSize(450, 450)
+        self.setStyleSheet("background-color: #1E1E1E; color: white;")
+        
+        self.setup_ui()
+        self.charger_produits()
+        
+    def setup_ui(self):
+        lay = QVBoxLayout(self)
+        lay.setSpacing(15)
+        
+        # Titre
+        lbl_titre = QLabel("SIGNALEMENT PRÉVENTIF")
+        lbl_titre.setStyleSheet("font-size: 14pt; font-weight: bold; color: #D500F9;")
+        lay.addWidget(lbl_titre)
+        
+        # Produit
+        lay.addWidget(QLabel("📦 Sélectionner le produit :"))
+        self.combo_produit = QComboBox()
+        self.combo_produit.setStyleSheet("""
+            QComboBox { background-color: #2D2D2D; border: 1px solid #444; padding: 8px; border-radius: 5px; color: white; }
+            QComboBox QAbstractItemView { background-color: #2D2D2D; color: white; selection-background-color: #D500F9; }
+        """)
+        lay.addWidget(self.combo_produit)
+        
+        # Priorité
+        lay.addWidget(QLabel("⚡ Niveau d'urgence :"))
+        self.combo_priorite = QComboBox()
+        self.combo_priorite.addItems(["MEDIUM", "HIGH", "CRITICAL"])
+        self.combo_priorite.setStyleSheet("""
+            QComboBox { background-color: #2D2D2D; border: 1px solid #444; padding: 8px; border-radius: 5px; color: white; }
+        """)
+        lay.addWidget(self.combo_priorite)
+        
+        # Commentaire
+        lay.addWidget(QLabel("📝 Motif / Observation (Prévisionnel) :"))
+        self.txt_motif = QTextEdit()
+        self.txt_motif.setPlaceholderText("Ex: Rupture fournisseur prévue, grosse commande client à venir...")
+        self.txt_motif.setStyleSheet("background-color: #2D2D2D; border: 1px solid #444; color: white; border-radius: 5px;")
+        lay.addWidget(self.txt_motif)
+        
+        # Bouton
+        self.btn_valider = QPushButton("ENREGISTRER LE SIGNALEMENT")
+        self.btn_valider.setFixedHeight(50)
+        self.btn_valider.setStyleSheet("""
+            QPushButton {
+                background-color: #D500F9; color: white; font-weight: bold; font-size: 11pt; border-radius: 10px;
+            }
+            QPushButton:hover { background-color: #AA00FF; }
+        """)
+        self.btn_valider.clicked.connect(self.valider)
+        lay.addWidget(self.btn_valider)
+
+    def charger_produits(self):
+        produits = Database.get_all_products()
+        for p in produits:
+            self.combo_produit.addItem(p['nom_produit'], p['id_produit'])
+            
+    def valider(self):
+        id_prod = self.combo_produit.currentData()
+        prio = self.combo_priorite.currentText()
+        motif = self.txt_motif.toPlainText().strip()
+        
+        if not motif:
+            QMessageBox.warning(self, "Attention", "Veuillez saisir un motif pour ce signalement préventif.")
+            return
+            
+        succes, msg = Database.create_manual_alert(id_prod, prio, motif, self.id_utilisateur)
+        if succes:
+            QMessageBox.information(self, "Succès", msg)
+            self.accept()
+        else:
+            QMessageBox.critical(self, "Erreur", msg)
+
+
 class DetailAlerteDialog(QDialog):
     """Panneau de détail et d'action"""
     def __init__(self, alerte, parent=None):
         super().__init__(parent)
         self.alerte = alerte
         self.setWindowTitle(f"Traitement : {alerte['nom_produit']}")
-        self.resize(500, 400)
+        self.resize(500, 420)
         self.setStyleSheet("background-color: #1E1E1E; color: white;")
         
         self.setup_ui()
@@ -239,31 +322,49 @@ class DetailAlerteDialog(QDialog):
         lay = QVBoxLayout(self)
         
         # Header
-        lbl_titre = QLabel(f"Alert #{self.alerte['id_alerte']} - {self.alerte['nom_produit']}")
+        lbl_titre = QLabel(f"Alerte #{self.alerte['id_alerte']} - {self.alerte['nom_produit']}")
         lbl_titre.setStyleSheet("font-size: 16pt; font-weight: bold; color: #00E5FF;")
         lay.addWidget(lbl_titre)
         
         # Info
-        info = f"Stock Actuel: {self.alerte['stock_alerte']}  |  Seuil Visé: {self.alerte['seuil_vise']}\n"
-        info += f"Priorité: {self.alerte['priorite']}  |  Détecté le: {self.alerte['date_creation'].strftime('%d/%m %H:%M')}"
-        lay.addWidget(QLabel(info))
+        info_grp = QGroupBox("Informations")
+        info_grp.setStyleSheet("QGroupBox { border: 1px solid #333; margin-top: 10px; padding-top: 20px; color: #888; }")
+        info_lay = QVBoxLayout(info_grp)
         
-        lay.addWidget(QLabel("\n📝 Enrichir (Commentaire Métier):"))
+        info_text = f"📦 Stock Actuel: {self.alerte['stock_alerte']}  |  Seuil Visé: {self.alerte['seuil_vise']}\n"
+        info_text += f"⚡ Priorité: {self.alerte['priorite']}  |  📅 Détecté: {self.alerte['date_creation'].strftime('%d/%m %H:%M')}"
+        
+        lbl_info = QLabel(info_text)
+        lbl_info.setStyleSheet("color: #E0E0E0;")
+        info_lay.addWidget(lbl_info)
+        lay.addWidget(info_grp)
+        
+        # Motif initial
+        lay.addWidget(QLabel("\n📝 Motif initial :"))
+        lbl_motif = QLabel(self.alerte['commentaire'] if self.alerte['commentaire'] else "Aucun commentaire")
+        lbl_motif.setStyleSheet("color: #B0B0B0; font-style: italic; background-color: #2D2D2D; padding: 10px; border-radius: 5px;")
+        lbl_motif.setWordWrap(True)
+        lay.addWidget(lbl_motif)
+        
+        lay.addWidget(QLabel("\n🔄 Enrichir (Observation Métier) :"))
         self.txt_comment = QTextEdit()
-        self.txt_comment.setPlaceholderText("Ex: Fournisseur contacté, livraison prévue demain...")
-        self.txt_comment.setStyleSheet("background-color: #2D2D2D; border: 1px solid #444; color: white;")
+        self.txt_comment.setPlaceholderText("Ex: Livraison Fournisseur X confirmée pour mardi...")
+        self.txt_comment.setStyleSheet("background-color: #2D2D2D; border: 1px solid #444; color: white; border-radius: 5px;")
         lay.addWidget(self.txt_comment)
         
         # Actions
         btn_box = QHBoxLayout()
+        btn_box.setSpacing(10)
         
-        btn_valider = QPushButton("✅ VALIDER & ENVOYER (EN COURS)")
-        btn_valider.setStyleSheet("background-color: #00C853; color: white; padding: 10px; font-weight: bold;")
-        btn_valider.clicked.connect(lambda: self.traiter('EN_COURS'))
-        
-        btn_archive = QPushButton("📁 ARCHIVER (RÉSOLU)")
-        btn_archive.setStyleSheet("background-color: #757575; color: white; padding: 10px; font-weight: bold;")
+        btn_archive = QPushButton("ARCHIVER")
+        btn_archive.setCursor(Qt.PointingHandCursor)
+        btn_archive.setStyleSheet("background-color: #424242; color: white; padding: 12px; font-weight: bold; border-radius: 5px;")
         btn_archive.clicked.connect(lambda: self.traiter('ARCHIVEE'))
+        
+        btn_valider = QPushButton("VALIDER (EN COURS)")
+        btn_valider.setCursor(Qt.PointingHandCursor)
+        btn_valider.setStyleSheet("background-color: #00C853; color: white; padding: 12px; font-weight: bold; border-radius: 5px;")
+        btn_valider.clicked.connect(lambda: self.traiter('EN_COURS'))
         
         btn_box.addWidget(btn_archive)
         btn_box.addWidget(btn_valider)
@@ -271,6 +372,6 @@ class DetailAlerteDialog(QDialog):
         lay.addLayout(btn_box)
         
     def traiter(self, statut):
-        comment = self.txt_comment.toPlainText()
+        comment = self.txt_comment.toPlainText().strip()
         Database.update_alert_status(self.alerte['id_alerte'], statut, comment)
         self.accept()

@@ -41,14 +41,48 @@ class EcranStatistiques(QWidget):
         # Grille de KPIs
         self._creer_grille_kpis(layout_principal)
         
-        # Espace
+        # Zone graphique horaire (Nouveau)
+        self._creer_zone_graphique(layout_principal)
+        
         layout_principal.addStretch()
         
         # Note informative
-        lbl_info = QLabel("💡 Ces chiffres reflètent l'activité de votre compte.")
+        lbl_info = QLabel("💡 Survoler les barres pour voir les détails d'une tranche horaire.")
         lbl_info.setStyleSheet("color: #757575; font-size: 10pt; font-style: italic;")
         lbl_info.setAlignment(Qt.AlignCenter)
         layout_principal.addWidget(lbl_info)
+
+    def _creer_zone_graphique(self, parent_layout):
+        """Crée la zone pour le graphique d'activité horaire"""
+        self.container_graphique = QFrame()
+        self.container_graphique.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border-radius: 12px;
+                padding: 20px;
+            }
+        """)
+        self.container_graphique.setMinimumHeight(300)
+        
+        layout_graph = QVBoxLayout(self.container_graphique)
+        
+        lbl_graph_titre = QLabel("📈 ACTIVITÉ PAR TRANCHE HORAIRE (AUJOURD'HUI)")
+        lbl_graph_titre.setStyleSheet("font-size: 11pt; font-weight: bold; color: #757575; margin-bottom: 10px;")
+        layout_graph.addWidget(lbl_graph_titre)
+        
+        # Le layout qui contiendra les barres
+        self.layout_barres = QHBoxLayout()
+        self.layout_barres.setSpacing(10)
+        self.layout_barres.setAlignment(Qt.AlignBottom)
+        
+        layout_graph.addLayout(self.layout_barres)
+        
+        # Labels des heures en bas
+        self.layout_heures = QHBoxLayout()
+        self.layout_heures.setSpacing(10)
+        layout_graph.addLayout(self.layout_heures)
+        
+        parent_layout.addWidget(self.container_graphique)
     
     def _creer_entete_filtres(self, parent_layout):
         """En-tête avec titre et boutons filtres"""
@@ -189,6 +223,12 @@ class EcranStatistiques(QWidget):
             self.carte_total.lbl_valeur.setText(f"0 FCFA")
             self.carte_tickets.lbl_valeur.setText("0")
             self.carte_panier_moyen.lbl_valeur.setText(f"0 FCFA")
+            # Cacher le graph si ce n'est pas "Aujourd'hui"
+            if self.filtre_actuel != 'today':
+                self.container_graphique.hide()
+            else:
+                self.container_graphique.show()
+                self.charger_graphique_horaire()
             return
         
         # Mettre à jour les KPIs
@@ -199,7 +239,85 @@ class EcranStatistiques(QWidget):
         self.carte_total.lbl_valeur.setText(f"{total_encaisse:,.0f} FCFA")
         self.carte_tickets.lbl_valeur.setText(str(nb_tickets))
         self.carte_panier_moyen.lbl_valeur.setText(f"{panier_moyen:,.0f} FCFA")
+
+        # Affichage conditionnel du graphique horaire
+        if self.filtre_actuel == 'today':
+            self.container_graphique.show()
+            self.charger_graphique_horaire()
+        else:
+            self.container_graphique.hide()
     
+    def charger_graphique_horaire(self):
+        """Récupère et affiche les données horaires"""
+        # Nettoyer les barres existantes
+        while self.layout_barres.count():
+            item = self.layout_barres.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        while self.layout_heures.count():
+            item = self.layout_heures.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        data = Database.get_cashier_hourly_stats(self.id_utilisateur)
+        
+        if not data:
+            lbl_empty = QLabel("Aucune activité enregistrée pour le moment.")
+            lbl_empty.setStyleSheet("color: #757575; font-style: italic;")
+            lbl_empty.setAlignment(Qt.AlignCenter)
+            self.layout_barres.addWidget(lbl_empty)
+            return
+            
+        # Trouver le maximum pour l'échelle
+        max_ca = max([d['total'] for d in data]) if data else 1
+        
+        # On définit une plage d'heures (ex: 8h à 20h ou simplement les heures avec données)
+        heures_potentielles = range(min([d['heure'] for d in data]), max([d['heure'] for d in data]) + 1)
+        
+        dict_data = {int(d['heure']): d for d in data}
+        
+        for h in heures_potentielles:
+            info = dict_data.get(h, {'total': 0, 'nb_tickets': 0})
+            ca = info['total']
+            tickets = info['nb_tickets']
+            
+            # Créer la barre
+            barre = QFrame()
+            hauteur_max = 200
+            hauteur = int((ca / max_ca) * hauteur_max) if max_ca > 0 else 2
+            if hauteur < 5: hauteur = 5 # Hauteur mini visible
+            
+            barre.setFixedHeight(hauteur)
+            barre.setFixedWidth(30)
+            
+            couleur = "#B0BEC5" if ca == 0 else "#2196F3"
+            barre.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {couleur};
+                    border-radius: 4px;
+                }}
+                QFrame:hover {{
+                    background-color: #64B5F6;
+                }}
+            """)
+            
+            # Tooltip interactif
+            if ca > 0:
+                tooltip = f"<b>Heure : {h}h</b><br/>CA : {ca:,.0f} FCFA<br/>Clients : {tickets}".replace(",", " ")
+                barre.setToolTip(tooltip)
+            else:
+                barre.setToolTip(f"{h}h : Aucune vente")
+                
+            self.layout_barres.addWidget(barre)
+            
+            # Label heure
+            lbl_h = QLabel(f"{h}h")
+            lbl_h.setFixedWidth(30)
+            lbl_h.setAlignment(Qt.AlignCenter)
+            lbl_h.setStyleSheet("color: #9E9E9E; font-size: 8pt;")
+            self.layout_heures.addWidget(lbl_h)
+
     def rafraichir(self):
         """Rafraîchit les statistiques (appelé lors du changement d'écran)"""
         self.charger_statistiques()
