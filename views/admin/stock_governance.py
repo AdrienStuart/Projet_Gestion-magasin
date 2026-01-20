@@ -109,7 +109,7 @@ class StockGovernance(QWidget):
         for row, d in enumerate(dorm):
             self.table_dormant.setItem(row, 0, QTableWidgetItem(d['nom']))
             self.table_dormant.setItem(row, 1, QTableWidgetItem(str(d['stockactuel'])))
-            val_item = QTableWidgetItem(f"{d['valeur_immobilisee']:,.0f}".replace(',', ' '))
+            val_item = QTableWidgetItem(f"{d['valeur_immobilisee']:,.0f} FCFA".replace(',', ' '))
             val_item.setForeground(QBrush(QColor("#F85149")))
             self.table_dormant.setItem(row, 2, val_item)
         
@@ -127,4 +127,4 @@ class StockGovernance(QWidget):
             self.table_overstock.setItem(row, 0, QTableWidgetItem(o['nom']))
             self.table_overstock.setItem(row, 1, QTableWidgetItem(str(o['stockactuel'])))
             self.table_overstock.setItem(row, 2, QTableWidgetItem(str(o['stockalerte'])))
-            self.table_overstock.setItem(row, 3, QTableWidgetItem(f"{o['valeur']:,.0f}".replace(',', ' ')))
+            self.table_overstock.setItem(row, 3, QTableWidgetItem(f"{o['valeur']:,.0f} FCFA".replace(',', ' ')))

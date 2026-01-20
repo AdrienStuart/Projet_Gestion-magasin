@@ -131,14 +131,14 @@ class StrategicDashboard(QWidget):
             return
         
         # Update CA
-        self.kpi_today.lbl_val.setText(f"{kpis['ca_today']:,.0f}".replace(',', ' '))
-        self.kpi_month.lbl_val.setText(f"{kpis['ca_month']:,.0f}".replace(',', ' '))
-        self.kpi_year.lbl_val.setText(f"{kpis['ca_year']:,.0f}".replace(',', ' '))
+        self.kpi_today.lbl_val.setText(f"{kpis['ca_today']:,.0f} FCFA".replace(',', ' '))
+        self.kpi_month.lbl_val.setText(f"{kpis['ca_month']:,.0f} FCFA".replace(',', ' '))
+        self.kpi_year.lbl_val.setText(f"{kpis['ca_year']:,.0f} FCFA".replace(',', ' '))
         
         # Update autres
-        self.kpi_marge.lbl_val.setText(f"{kpis['marge_brute']:,.0f}".replace(',', ' '))
+        self.kpi_marge.lbl_val.setText(f"{kpis['marge_brute']:,.0f} FCFA".replace(',', ' '))
         self.kpi_alerts.lbl_val.setText(str(kpis['critical_alerts']))
-        self.kpi_stock.lbl_val.setText(f"{kpis['stock_value']:,.0f}".replace(',', ' '))
+        self.kpi_stock.lbl_val.setText(f"{kpis['stock_value']:,.0f} FCFA".replace(',', ' '))
         
         # Top products
         top_text = "\n".join([f"{i+1}. {p['nom']} ({p['qty']} unités)" 

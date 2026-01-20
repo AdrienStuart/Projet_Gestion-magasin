@@ -442,13 +442,13 @@ class EcranVente(QWidget):
             self.table_panier.setItem(row, 2, QTableWidgetItem(str(quantite)))
             
             # Prix unitaire (avec remise si applicable)
-            prix_str = f"{prix_u:,.0f}"
+            prix_str = f"{prix_u:,.0f} FCFA"
             if remise > 0:
                 prix_str += f" (-{remise:g}%)"
             self.table_panier.setItem(row, 3, QTableWidgetItem(prix_str))
             
             # Total ligne
-            self.table_panier.setItem(row, 4, QTableWidgetItem(f"{total_ligne:,.0f}"))
+            self.table_panier.setItem(row, 4, QTableWidgetItem(f"{total_ligne:,.0f} FCFA"))
         
         # Mettre à jour les totaux
         self._rafraichir_totaux(articles)

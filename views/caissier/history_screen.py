@@ -261,7 +261,7 @@ class EcranHistorique(QWidget):
             
             # Total HT
             total_ht = vente.get('total_ht', 0)
-            self.table_historique.setItem(row, 3, QTableWidgetItem(f"{total_ht:,.0f}"))
+            self.table_historique.setItem(row, 3, QTableWidgetItem(f"{total_ht:,.0f} FCFA"))
             
             # Total TTC
             total_ttc = vente.get('total_ttc', 0)

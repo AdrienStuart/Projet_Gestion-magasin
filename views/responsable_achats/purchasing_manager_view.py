@@ -7,6 +7,7 @@ from datetime import datetime
 from views.responsable_achats.purchasing_dashboard import PurchasingDashboard
 from views.responsable_achats.alerts_processing_screen import AlertsProcessingScreen
 from views.responsable_achats.supplier_orders_screen import SupplierOrdersScreen
+from views.responsable_achats.purchasing_stats_screen import PurchasingStatsScreen
 
 class PurchasingManagerView(QWidget):
     """
@@ -17,6 +18,7 @@ class PurchasingManagerView(QWidget):
     INDEX_DASHBOARD = 0
     INDEX_TRAITEMENT = 1
     INDEX_COMMANDES = 2
+    INDEX_STATS = 3
     
     def __init__(self, id_utilisateur: int, nom_utilisateur: str):
         super().__init__()
@@ -86,6 +88,10 @@ class PurchasingManagerView(QWidget):
         self.btn_orders.clicked.connect(self.afficher_commandes)
         lay.addWidget(self.btn_orders)
         
+        self.btn_stats = self._make_btn("📈 Statistiques", False)
+        self.btn_stats.clicked.connect(self.afficher_stats)
+        lay.addWidget(self.btn_stats)
+        
         lay.addStretch()
         
         # User & Logout
@@ -141,14 +147,16 @@ class PurchasingManagerView(QWidget):
     def _init_screens(self):
         self.screen_dashboard = PurchasingDashboard()
         self.screen_process = AlertsProcessingScreen(self.id_utilisateur)
-        self.screen_orders = SupplierOrdersScreen()
+        self.screen_orders = SupplierOrdersScreen(self.id_utilisateur)
+        self.screen_stats = PurchasingStatsScreen()
         
         self.stacked_widget.addWidget(self.screen_dashboard)
         self.stacked_widget.addWidget(self.screen_process)
         self.stacked_widget.addWidget(self.screen_orders)
+        self.stacked_widget.addWidget(self.screen_stats)
         
     def _update_nav(self, btn, idx, title):
-        for b in [self.btn_dash, self.btn_process, self.btn_orders]:
+        for b in [self.btn_dash, self.btn_process, self.btn_orders, self.btn_stats]:
             b.setChecked(b == btn)
         self.stacked_widget.setCurrentIndex(idx)
         self.lbl_page_title.setText(title)
@@ -166,6 +174,9 @@ class PurchasingManagerView(QWidget):
         
     def afficher_commandes(self):
         self._update_nav(self.btn_orders, self.INDEX_COMMANDES, "SUIVI COMMANDES FOURNISSEURS")
+
+    def afficher_stats(self):
+        self._update_nav(self.btn_stats, self.INDEX_STATS, "STATISTIQUES & PERFORMANCES")
 
     def _logout(self):
         if hasattr(self, 'controller'): self.controller.logout()

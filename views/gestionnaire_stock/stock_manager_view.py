@@ -16,7 +16,9 @@ from views.gestionnaire_stock.stock_table_screen import StockTableScreen
 from views.gestionnaire_stock.movements_screen import MovementsScreen
 from views.gestionnaire_stock.alerts_screen import AlertsScreen
 from views.gestionnaire_stock.stock_stats_screen import StockStatsScreen
+from views.gestionnaire_stock.stock_stats_screen import StockStatsScreen
 from views.gestionnaire_stock.signalements_screen import SignalementsScreen
+from views.gestionnaire_stock.order_receipt_screen import OrderReceiptScreen
 
 
 class StockManagerView(QWidget):
@@ -29,8 +31,10 @@ class StockManagerView(QWidget):
     INDEX_STOCK = 0
     INDEX_MOUVEMENTS = 1
     INDEX_ALERTES = 2
-    INDEX_SIGNALEMENTS = 3
-    INDEX_STATS = 4
+    INDEX_ALERTES = 2
+    INDEX_RECEPTION = 3
+    INDEX_SIGNALEMENTS = 4
+    INDEX_STATS = 5
     
     def __init__(self, id_utilisateur: int = 1, nom_utilisateur: str = "Gestionnaire"):
         super().__init__()
@@ -42,8 +46,6 @@ class StockManagerView(QWidget):
         self.nom_utilisateur = nom_utilisateur
         self.is_sidebar_collapsed = False
         
-        self.INDEX_SIGNALEMENTS = 3
-        self.INDEX_STATS = 4
         
         self.setup_ui()
         self.afficher_tableau_stock()
@@ -111,6 +113,10 @@ class StockManagerView(QWidget):
         self.btn_alertes = self._creer_btn_sidebar("⚠️", "Alertes (Vue Simple)", False)
         self.btn_alertes.clicked.connect(self.afficher_alertes)
         layout_sidebar.addWidget(self.btn_alertes)
+        
+        self.btn_reception = self._creer_btn_sidebar("📦", "Réception Commandes", False)
+        self.btn_reception.clicked.connect(self.afficher_reception)
+        layout_sidebar.addWidget(self.btn_reception)
         
         self.btn_signalements = self._creer_btn_sidebar("🚥", "Centre Signalements", False)
         self.btn_signalements.clicked.connect(self.afficher_signalements)
@@ -238,6 +244,10 @@ class StockManagerView(QWidget):
         self.ecran_alertes = AlertsScreen(self.id_utilisateur)
         self.stacked_widget.addWidget(self.ecran_alertes)
         
+        # Écran 3: Réception Commandes
+        self.ecran_reception = OrderReceiptScreen(self.id_utilisateur)
+        self.stacked_widget.addWidget(self.ecran_reception)
+        
         # Écran 3: Signalements (Centre de Commande)
         self.ecran_signalements = SignalementsScreen(self.id_utilisateur)
         self.stacked_widget.addWidget(self.ecran_signalements)
@@ -268,6 +278,13 @@ class StockManagerView(QWidget):
         self.stacked_widget.setCurrentIndex(self.INDEX_ALERTES)
         self.lbl_titre_ecran.setText("⚠️ Alertes Stock")
         self.ecran_alertes.rafraichir()
+        
+    def afficher_reception(self):
+        """Affiche la réception des commandes"""
+        self._update_active_btn(self.btn_reception)
+        self.stacked_widget.setCurrentIndex(self.INDEX_RECEPTION)
+        self.lbl_titre_ecran.setText("📦 Réception Commandes")
+        self.ecran_reception.rafraichir()
     
     def afficher_signalements(self):
         """Affiche le Centre de Signalements"""
@@ -285,7 +302,7 @@ class StockManagerView(QWidget):
     
     def _update_active_btn(self, btn_actif):
         """Active un bouton et désactive les autres"""
-        for btn in [self.btn_stock, self.btn_mouvements, self.btn_alertes, self.btn_signalements, self.btn_stats]:
+        for btn in [self.btn_stock, self.btn_mouvements, self.btn_alertes, self.btn_reception, self.btn_signalements, self.btn_stats]:
             btn.setChecked(btn == btn_actif)
     
     def _deconnecter(self):

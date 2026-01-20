@@ -89,7 +89,7 @@ class CommercialPerformance(QWidget):
         for row, p in enumerate(products):
             self.table_products.setItem(row, 0, QTableWidgetItem(p['produit']))
             self.table_products.setItem(row, 1, QTableWidgetItem(str(p['qty_vendue'])))
-            self.table_products.setItem(row, 2, QTableWidgetItem(f"{p['ca']:,.0f}".replace(',', ' ')))
+            self.table_products.setItem(row, 2, QTableWidgetItem(f"{p['ca']:,.0f} FCFA".replace(',', ' ')))
         
         # Cashiers
         cashiers = Database.get_sales_by_cashier()
@@ -97,5 +97,5 @@ class CommercialPerformance(QWidget):
         for row, c in enumerate(cashiers):
             self.table_cashiers.setItem(row, 0, QTableWidgetItem(c['caissier']))
             self.table_cashiers.setItem(row, 1, QTableWidgetItem(str(c['nb_ventes'])))
-            self.table_cashiers.setItem(row, 2, QTableWidgetItem(f"{c['ca']:,.0f}".replace(',', ' ')))
-            self.table_cashiers.setItem(row, 3, QTableWidgetItem(f"{c['panier_moyen']:,.0f}".replace(',', ' ')))
+            self.table_cashiers.setItem(row, 2, QTableWidgetItem(f"{c['ca']:,.0f} FCFA".replace(',', ' ')))
+            self.table_cashiers.setItem(row, 3, QTableWidgetItem(f"{c['panier_moyen']:,.0f} FCFA".replace(',', ' ')))
