@@ -2,14 +2,18 @@
 
 Système complet de gestion de magasin incluant les modules **Caisse**, **Stock**, **Achats** et **Administration**.
 
-## 🛠 Installation Rapide
+## 🛠 Installation
 
-Pour installer toutes les dépendances Python nécessaires (PySide6, Matplotlib, etc.), ouvrez un terminal dans ce dossier et lancez :
+### 🐧 Sur Linux (Ubuntu/Debian)
+1.  **Système** : `sudo ./install_system_deps.sh`
+2.  **Bibliothèques** : `./setup.sh`
 
-```bash
-chmod +x setup.sh
-./setup.sh
-```
+### 🪟 Sur Windows
+1.  **Système** : Ouvrez **PowerShell en Administrateur** et lancez :
+    ```powershell
+    Set-ExecutionPolicy Bypass -Scope Process -Force; ./install_windows_deps.ps1
+    ```
+2.  **Bibliothèques** : Double-cliquez sur `setup_windows.bat` ou lancez-le dans un terminal.
 
 ## 🗄 Configuration de la Base de Données
 

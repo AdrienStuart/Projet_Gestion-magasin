@@ -1115,6 +1115,27 @@ class Database:
             cur.close()
             conn.close()
 
+    @staticmethod
+    def get_order_details(id_achat):
+        """Récupère les détails d'une commande (lignes d'achat)"""
+        conn = Database.get_connection()
+        if not conn: return []
+        cur = connection.get_cursor(conn)
+        try:
+            cur.execute("""
+                SELECT la.Id_Produit as id_produit, p.Nom as nom, 
+                       la.Quantite as quantite, la.PrixAchatNegocie as prixachatnegocie
+                FROM LigneAchat la
+                JOIN Produit p ON la.Id_Produit = p.Id_Produit
+                WHERE la.Id_Achat = %s
+            """, (id_achat,))
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Erreur get_order_details: {e}")
+            return []
+        finally:
+            connection.close_connection(conn)
+
     # ================= ADMIN MODULE =================
     
     @staticmethod
